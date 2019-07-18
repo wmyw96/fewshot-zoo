@@ -69,6 +69,7 @@ for epoch in range(params['train']['num_epoches']):
             break
     agent.print_log(epoch)
     agent.visualize2d('logs/syn2d', train, epoch, color_set)
+    agent.take_step()
     if done:
         break
 

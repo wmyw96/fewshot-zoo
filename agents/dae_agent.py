@@ -31,7 +31,11 @@ class DAE(object):
         else:
             self.sess = tf.Session()
         self.step = 0
-        self.decay = 1.0
+
+        self.g_decay = 1.0
+        self.d_decay = 1.0
+        self.e_decay = 1.0
+
         self.losses = {}
         self.nclass = params['data']['nclass']
         self.save_model = tf.train.Saver(var_list=self.save_vars)
@@ -50,7 +54,7 @@ class DAE(object):
                                   feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
-                                    self.ph['lr_decay']: self.decay,
+                                    self.ph['d_lr_decay']: self.d_decay,
                                     self.ph['is_training']: True,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                                   })
@@ -61,7 +65,8 @@ class DAE(object):
                               feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
-                                    self.ph['lr_decay']: self.decay,
+                                    self.ph['g_lr_decay']: self.g_decay,
+                                    self.ph['e_lr_decay']: self.e_decay,
                                     self.ph['is_training']: True,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                               })
@@ -106,6 +111,12 @@ class DAE(object):
     
     def take_step(self):
         self.epoch += 1
+        if self.epoch % self.params['network']['n_decay']:
+            self.g_decay *= self.params['network']['weight_decay']
+        if self.epoch % self.params['disc']['n_decay']
+            self.d_decay *= self.params['disc']['weight_decay']
+        if self.epoch % self.params['embedding']['n_decay']:
+            self.e_decay *= self.params['embedding']['weight_decay']
         
     def print_log(self, epoch):
         print_log('DAE Training: ', epoch, self.losses)
