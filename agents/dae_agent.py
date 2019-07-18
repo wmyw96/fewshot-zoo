@@ -99,8 +99,8 @@ class DAE(object):
             plt.scatter(fake_z[i, 0], fake_z[i, 1], c=color[int(y[i])], s=0.3, marker='*')
 
         patho = '{}/epoch{}.png'.format(path, epoch)
-        plt.xlim(-8, 8)
-        plt.ylim(-8, 8)
+        #plt.xlim(-8, 8)
+        #plt.ylim(-8, 8)
         plt.savefig(patho)
         plt.close()
     
