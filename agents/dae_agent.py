@@ -54,7 +54,7 @@ class DAE(object):
                                   feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
-                                    self.ph['lr_decay']: self.decay,
+                                    self.ph['d_lr_decay']: self.d_decay,
                                     self.ph['is_training']: True,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                                   })
@@ -65,7 +65,8 @@ class DAE(object):
                               feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
-                                    self.ph['lr_decay']: self.decay,
+                                    self.ph['g_lr_decay']: self.g_decay,
+                                    self.ph['e_lr_decay']: self.e_decay,
                                     self.ph['is_training']: True,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                               })
