@@ -174,7 +174,7 @@ def get_dae_targets(params, ph, graph, graph_vars):
         gen['g_loss'] += gen['rec_loss'] * params['network']['rec_weight']
 
     # classfication loss
-    log_p_y_prior = tf.log(tf.expand_dims(ph['p_y_prior'], 1))      # [1, K]
+    log_p_y_prior = tf.log(tf.expand_dims(ph['p_y_prior'], 0))      # [1, K]
     dist = euclidean_distance(graph['fake_z'], graph['mu'])         # [b, K]
 
     logits = -dist + log_p_y_prior

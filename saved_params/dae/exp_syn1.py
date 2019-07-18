@@ -4,18 +4,18 @@ def generate_params():
 
     data = {
         'dataset': 'mix-gaussian',
-        'size': 100000, 
+        'size': 10000, 
         'x_size': [64],
         'nclass': nclass,
         'radius': 2.0,
-        'stddev': 0.2,
+        'stddev': 0.5,
         'split': ['train'],
     }
 
     train = {
         'batch_size': 100,
         'num_epoches': 1000,
-        'iter_per_epoch': 100000 // 100,
+        'iter_per_epoch': 10000 // 100,
         'valid_interval': None,
     }
 
@@ -23,7 +23,7 @@ def generate_params():
     reg_scale = 1e-8
     init = 'he'
     act = 'relu'
-    z_dim = 64
+    z_dim = 2
     h_dim = 256
 
     network = {
@@ -33,7 +33,9 @@ def generate_params():
         'e_m_weight': 1.0,
         'lr': lr,
         'rec_weight': 1.0,
-        'cls_weight': 1.0
+        'cls_weight': 1.0,
+        'n_decay': 30,
+        'weight_decay': 0.5
     }
 
     encoder = {
@@ -56,6 +58,8 @@ def generate_params():
 
     disc = {
         'lr': lr,
+        'n_decay': 50,
+        'weight_decay': 0.5,
         'gan-loss': 'wgan-gp',
         'type': 'fc',
         'gp_weight': 10.0,
@@ -71,6 +75,8 @@ def generate_params():
 
     embed = {
         'lr': 1e-1,
+        'n_decay': 20,
+        'weight_decay': 0.5,
         'type': 'gaussian',
         'stddev': 1.0
     }

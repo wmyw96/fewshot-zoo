@@ -1,6 +1,7 @@
 from model.dae import *
 from agents.utils import *
 import signal
+import matplotlib.pyplot as plt
 
 
 class GracefulKiller:
@@ -21,6 +22,7 @@ class DAE(object):
         # Build computation graph for the DDPG agent
         self.ph, self.graph, self.targets, self.save_vars = build_dae_model(params)
         self.gpu = gpu
+        self.epoch = 0
 
         # Session and saver
         if self.gpu > -1:
@@ -31,7 +33,7 @@ class DAE(object):
         self.step = 0
         self.decay = 1.0
         self.losses = {}
-
+        self.nclass = params['data']['nclass']
         self.save_model = tf.train.Saver(var_list=self.save_vars)
         self.killer = GracefulKiller()
 
@@ -55,7 +57,7 @@ class DAE(object):
             update_loss(fetch, self.losses)
 
         inputs, labels = data_loader.next_batch(batch_size)
-        fetch = self.sess.run(self.targets['disc'], 
+        fetch = self.sess.run(self.targets['gen'], 
                               feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
@@ -80,7 +82,31 @@ class DAE(object):
             else:
                 self.killer.kill_now = False
         return False
+    
+    def visualize2d(self, path, data_loader, epoch, color):
+        x, y = data_loader.next_batch(5000)
+        plt.figure(figsize=(8, 8))
+        embed = self.sess.run(self.graph['mu'])
+        fake_z = self.sess.run(self.graph['fake_z'], feed_dict={self.ph['data']:x, self.ph['is_training']: False})
+        
+        for i in range(self.nclass):
+            # samples
+            #plt.scatter(real[i, :, 0], real[i, :, 1], c=color[i], s=0.3, marker='*')
+            point = embed[i]
+            plt.scatter(point[0], point[1], c=color[i], s=20.0, marker='x')
+        
+        for i in range(x.shape[0]):
+            plt.scatter(fake_z[i, 0], fake_z[i, 1], c=color[int(y[i])], s=0.3, marker='*')
 
+        patho = '{}/epoch{}.png'.format(path, epoch)
+        plt.xlim(-8, 8)
+        plt.ylim(-8, 8)
+        plt.savefig(patho)
+        plt.close()
+    
+    def take_step(self):
+        self.epoch += 1
+        
     def print_log(self, epoch):
-        print('DAE Training: ', epoch, self.losses)
+        print_log('DAE Training: ', epoch, self.losses)
         self.losses = {}

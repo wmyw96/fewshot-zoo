@@ -7,7 +7,8 @@ import shutil
 import matplotlib
 import importlib
 import argparse
-
+from tqdm import tqdm
+from utils import *
 from agents.dae_agent import DAE
 from data.dataset import load_dataset
 
@@ -62,11 +63,12 @@ for epoch in range(params['train']['num_epoches']):
     if params['train']['valid_interval'] is not None:
         if epoch % params['train']['valid_interval']:
             agent.eval(epoch, valid)
-    for iters in range(params['train']['iter_per_epoch']):
+    for iters in tqdm(range(params['train']['iter_per_epoch'])):
         done = agent.train_iter(train)
         if done:
             break
     agent.print_log(epoch)
+    agent.visualize2d('logs/syn2d', train, epoch, color_set)
     if done:
         break
 
