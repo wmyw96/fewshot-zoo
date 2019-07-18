@@ -47,3 +47,27 @@ class classfication_dataset(object):
     def get_weight(self):
         return self.weight
 
+
+class class_indexed_classification_dataset(object):
+    def __init__(self):
+        self.inputs = []
+        self.nclass = 0
+        self.weight = None
+
+    def register(self):
+        self.weight = np.zeros((self.nclass), dtype=np.float32)
+        for i in range(len(inputs)):
+            self.weight[i] = inputs[i].shape[0]
+        self.weight /= np.sum(self.weight)
+        assert np.abs(np.sum(self.weight) - 1) < 1e-9
+
+    def add_class(self, inputs_cls):
+        if self.weight is not None:
+            print('Could not add class after registeration')
+        self.inputs.append(inputs_cls)
+        self.nclass += 1
+
+    def next_batch(self, batch_class, batch_size):
+        clslist = np.random.permutation(self.nclass)[:batch_class]
+        for i in range(batch_class):
+            return None

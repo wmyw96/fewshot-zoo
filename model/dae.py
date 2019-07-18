@@ -47,7 +47,9 @@ def get_dae_ph(params):
     ph['label'] = tf.placeholder(dtype=tf.int64,
                                 shape=[None],
                                 name='label')
-    ph['lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='lr_decay')
+    ph['g_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='g_lr_decay')
+    ph['e_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='e_lr_decay')
+    ph['d_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='d_lr_decay')
     ph['is_training'] = tf.placeholder(dtype=tf.bool, shape=[], name='is_training')
     ph['p_y_prior'] = tf.placeholder(dtype=tf.float32, shape=[params['data']['nclass'],], 
                                      name='is_training')
@@ -145,7 +147,7 @@ def get_dae_targets(params, ph, graph, graph_vars):
         gradient_penalty = wgan_gp_gp_loss(graph['hat_z'], graph['hat_z_critic'])
         d_loss = -w_dist + params['disc']['gp_weight'] * gradient_penalty
 
-        disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['lr_decay'])
+        disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['d_lr_decay'])
         disc_grads = disc_op.compute_gradients(loss=d_loss,
                                                var_list=graph_vars['disc'])
         disc_train_op = disc_op.apply_gradients(grads_and_vars=disc_grads)
@@ -186,12 +188,12 @@ def get_dae_targets(params, ph, graph, graph_vars):
     gen['acc_loss'] = acc
     gen['g_loss'] += gen['cls_loss'] * params['network']['cls_weight']
 
-    gen_op = tf.train.AdamOptimizer(params['network']['lr'] * ph['lr_decay'])
+    gen_op = tf.train.AdamOptimizer(params['network']['lr'] * ph['g_lr_decay'])
     gen_grads = gen_op.compute_gradients(loss=gen['g_loss'],
                                           var_list=graph_vars['gen'])
     gen_train_op = gen_op.apply_gradients(grads_and_vars=gen_grads)
 
-    embed_op = tf.train.AdamOptimizer(params['embedding']['lr'] * ph['lr_decay'])
+    embed_op = tf.train.AdamOptimizer(params['embedding']['lr'] * ph['e_lr_decay'])
     embed_grads = embed_op.compute_gradients(loss=gen['g_loss'],
                                             var_list=graph_vars['embed'])
     embed_train_op = embed_op.apply_gradients(grads_and_vars=embed_grads)

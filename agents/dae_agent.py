@@ -31,7 +31,11 @@ class DAE(object):
         else:
             self.sess = tf.Session()
         self.step = 0
-        self.decay = 1.0
+
+        self.g_decay = 1.0
+        self.d_decay = 1.0
+        self.e_decay = 1.0
+
         self.losses = {}
         self.nclass = params['data']['nclass']
         self.save_model = tf.train.Saver(var_list=self.save_vars)
@@ -106,6 +110,12 @@ class DAE(object):
     
     def take_step(self):
         self.epoch += 1
+        if self.epoch % self.params['network']['n_decay']:
+            self.g_decay *= self.params['network']['weight_decay']
+        if self.epoch % self.params['disc']['n_decay']
+            self.d_decay *= self.params['disc']['weight_decay']
+        if self.epoch % self.params['embedding']['n_decay']:
+            self.e_decay *= self.params['embedding']['weight_decay']
         
     def print_log(self, epoch):
         print_log('DAE Training: ', epoch, self.losses)
