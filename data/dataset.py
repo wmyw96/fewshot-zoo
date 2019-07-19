@@ -1,5 +1,6 @@
 from data.base import *
 from data.mix_normal import *
+from data.mini_imagenet import *
 
 
 def load_dataset(params):
@@ -9,5 +10,7 @@ def load_dataset(params):
                                          params['data']['nclass'],
                                          params['data']['radius'], 
                                          params['data']['stddev'])
+    elif params['data']['dataset'] == 'mini-imagenet':
+        return load_mini_imagenet(params)
     else:
         raise ValueError('Dataset doesn\'t exist !!')
