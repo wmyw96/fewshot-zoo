@@ -10,6 +10,7 @@ import argparse
 from tqdm import tqdm
 from utils import *
 from agents.dae_agent import DAE
+from agents.supportquery_agent import SupportQueryAgent
 from data.dataset import load_dataset
 
 # os settings
@@ -47,6 +48,8 @@ tf.random.set_random_seed(args.seed)
 
 dataset = load_dataset(params)
 
+valid, test = None, None
+
 if len(params['data']['split']) == 1:
     train = dataset
 elif len(params['data']['split']) == 2:
@@ -56,12 +59,14 @@ elif len(params['data']['split']) == 3:
 
 if args.model == 'dae':
     agent = DAE(params)
+elif args.model == 'protonet':
+    agent = SupportQueryAgent(params, )
 
 agent.start()
 done = False
 for epoch in range(params['train']['num_epoches']):
     if params['train']['valid_interval'] is not None:
-        if epoch % params['train']['valid_interval']:
+        if epoch % params['train']['valid_interval'] == 0:
             agent.eval(epoch, valid)
     for iters in tqdm(range(params['train']['iter_per_epoch'])):
         done = agent.train_iter(train)
