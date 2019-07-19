@@ -2,7 +2,7 @@
 def generate_params():
     data = {
         'dataset': 'mini-imagenet',
-        'data_dir': '../data/mini-imagenet/',
+        'data_dir': '../../data/mini-imagenet/',
         'split_dir': './splits/mini-imagenet',
         'x_size': [84, 84, 3],
         'nclass': 64,

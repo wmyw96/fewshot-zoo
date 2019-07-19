@@ -21,7 +21,7 @@ class SupportQueryAgent(object):
         self.params = params
 
         if params['network']['model'] == 'protonet':
-            self.ph, self.graph, self.targets, self.save_vars = build_dae_model(params)
+            self.ph, self.graph, self.targets, self.save_vars = build_protonet_model(params)
         else:
             raise NotImplementedError
         self.gpu = gpu

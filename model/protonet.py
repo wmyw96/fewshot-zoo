@@ -4,6 +4,7 @@ from model.network import *
 from model.layers import *
 from model.network import *
 from model.loss import *
+from model.utils import *
 
 
 def get_protonet_ph(params):
@@ -40,7 +41,7 @@ def get_protonet_graph_var_and_targets(params, ph):
     sx = tf.reshape(ph['support'], tf.convert_to_tensor([ns*n_way] + params['data']['x_size']))  # [ns * k, sz]
     qx = tf.reshape(ph['query'], tf.convert_to_tensor([nq*n_way] + params['data']['x_size']))    # [nq * k, sz]
 
-    with tf.variable_scope('protonet', reuse=False)
+    with tf.variable_scope('protonet', reuse=False):
         x = tf.concat([sx, qx], axis=0)
         z = four_block_cnn_encoder(x, params['network']['h_dim'], params['network']['z_dim'], 
                                    ph['is_training'], reuse=False)
@@ -50,6 +51,7 @@ def get_protonet_graph_var_and_targets(params, ph):
 
     graph_vars = {'network': tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='protonet')}
     save_vars = graph_vars['network']
+    show_params('ProtoNet', graph_vars['network'])
 
     loss, acc = proto_model(sz, qz, ns, nq, n_way, ph['label'])
 
@@ -68,7 +70,7 @@ def get_protonet_graph_var_and_targets(params, ph):
     return graph, save_vars, targets
 
 
-def get_protonet_model(params):
+def build_protonet_model(params):
     ph = get_protonet_ph(params)
     graph, save_vars, targets = get_protonet_graph_var_and_targets(params, ph)
     return ph, graph, targets, save_vars

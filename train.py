@@ -46,22 +46,26 @@ params['train']['seed'] = args.seed
 np.random.seed(args.seed)
 tf.random.set_random_seed(args.seed)
 
-dataset = load_dataset(params)
-
-valid, test = None, None
-
-if len(params['data']['split']) == 1:
-    train = dataset
-elif len(params['data']['split']) == 2:
-    train, test = dataset
-elif len(params['data']['split']) == 3:
-    train, valid, test = dataset
-
+# fetch model
 if args.model == 'dae':
     agent = DAE(params)
 elif args.model == 'protonet':
     agent = SupportQueryAgent(params, )
 
+# get dataset
+
+dataset = load_dataset(params)
+
+valid, test = None, None
+
+if len(params['data']['split']) == 1:
+    train = dataset['train']
+elif len(params['data']['split']) == 2:
+    train, test = dataset['train'], dataset['test']
+elif len(params['data']['split']) == 3:
+    train, valid, test = dataset['train'], dataset['valid'], dataset['test']
+
+# start training
 agent.start()
 done = False
 for epoch in range(params['train']['num_epoches']):

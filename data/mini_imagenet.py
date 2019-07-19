@@ -1,9 +1,9 @@
 import numpy as np
 import cv2
 import os
+from tqdm import tqdm
 
-
-read_and_resize = lambda x: cv2.resize(cv2.imread(x, 1), (width, height))
+read_and_resize = lambda x: cv2.resize(cv2.imread(x, 1), (84, 84))
 
 def load_mini_imagenet(params):
     pd = params['data']
@@ -13,9 +13,9 @@ def load_mini_imagenet(params):
 
     ret = {}
 
-    splits = pd['splits']
+    splits = pd['split']
     for split in splits:
-        csv_path = osp.join(ROOT_PATH, setname + '.csv')
+        csv_path = os.path.join(split_dir, split + '.csv')
         lines = [x.strip() for x in open(csv_path, 'r').readlines()][1:]
 
         data = []
@@ -23,13 +23,14 @@ def load_mini_imagenet(params):
         gid2clsid = {}
         cnt = -1
 
-        for l in lines:
+        for lid in tqdm(range(len(lines)), desc='Split [{}]'.format(split)):
+            l = lines[lid]
             name, gid = l.split(',')
-            path = osp.join(data_dir, name)
+            path = os.path.join(data_dir, name)
             if gid not in gid2clsid:
                 cnt += 1
                 gid2clsid[gid] = cnt
-            data.append(read_and_resize(path).expand_dims(0))
+            data.append(np.expand_dims(read_and_resize(path), 0))
             label.append(gid2clsid[gid])
 
         print('Split [{}]: {} classes, {} samples, Avg {} samples per class'.
