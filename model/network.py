@@ -38,7 +38,7 @@ ce_loss = -tf.reduce_mean(tf.reshape(tf.reduce_sum(tf.multiply(y_one_hot, log_p_
 acc = tf.reduce_mean(tf.to_float(tf.equal(tf.argmax(log_p_y, axis=-1), y)))
 '''
 
-def proto_calculate(support, query, label)
+def proto_calculate(support, query, label):
     # support :  [k, ns, d]
     # query   :  [k, nq, d]
     # label   :  [k, nq, k]

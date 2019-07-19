@@ -111,12 +111,15 @@ class DAE(object):
     
     def take_step(self):
         self.epoch += 1
-        if self.epoch % self.params['network']['n_decay']:
+        if self.epoch % self.params['network']['n_decay'] == 0:
             self.g_decay *= self.params['network']['weight_decay']
-        if self.epoch % self.params['disc']['n_decay']
+            print('G Decay, Current = {}'.format(self.g_decay))
+        if self.epoch % self.params['disc']['n_decay'] == 0:
             self.d_decay *= self.params['disc']['weight_decay']
-        if self.epoch % self.params['embedding']['n_decay']:
+            print('D Decay, Current = {}'.format(self.d_decay))
+        if self.epoch % self.params['embedding']['n_decay'] == 0:
             self.e_decay *= self.params['embedding']['weight_decay']
+            print('E Decay, Current = {}'.format(self.e_decay))
         
     def print_log(self, epoch):
         print_log('DAE Training: ', epoch, self.losses)

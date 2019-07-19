@@ -12,7 +12,7 @@ def update_loss(fetch, loss):
 
 def print_log(title, epoch, loss):
     spacing = 10
-    print_str = '{} epoch {}'.format(title, epoch)
+    print_str = '{} epoch {}   '.format(title, epoch)
 
     for i, (k_, v_) in enumerate(loss.items()):
         if 'loss' in k_:
