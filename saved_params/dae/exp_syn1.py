@@ -3,7 +3,7 @@ def generate_params():
     nclass = 64
 
     data = {
-        'dataset': 'mix-gaussian',
+        'dataset': 'mini-imagenet',
         'size': 10000, 
         'x_size': [64],
         'nclass': nclass,

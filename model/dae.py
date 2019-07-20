@@ -9,8 +9,11 @@ from model.loss import *
 def dae_encoder_factory(inp, ph, params):
     if params['type'] == 'fc':
         return feedforward(inp, ph['is_training'], params, 'fc')
+    elif params['type'] == '4blockcnn':
+        feat = four_block_cnn_encoder(inp, 64, 64, ph['is_training'], params)
+        return feedforward(feat, ph['is_training'], params, 'fc')
     else:
-        raise ValueError('Not Impelmented')
+        raise NotImplementedError
 
 
 def dae_decoder_factory(inp, ph, params):
@@ -39,6 +42,7 @@ def get_dae_ph(params):
     # lr decay
     # is_training
 
+    # for training
     params_d = params['data']
 
     ph['data'] = tf.placeholder(dtype=tf.float32, 
@@ -53,6 +57,17 @@ def get_dae_ph(params):
     ph['is_training'] = tf.placeholder(dtype=tf.bool, shape=[], name='is_training')
     ph['p_y_prior'] = tf.placeholder(dtype=tf.float32, shape=[params['data']['nclass'],], 
                                      name='is_training')
+
+    # for evaluation
+    ph['support'] = tf.placeholder(dtype=tf.float32, 
+                                   shape=[None, None] + params_d['x_size'],
+                                   name='s')
+    ph['query'] = tf.placeholder(dtype=tf.float32, 
+                                 shape=[None, None] + params_d['x_size'],
+                                 name='q')
+    ph['eval_label'] = tf.placeholder(dtype=tf.int64,
+                                shape=[None, None],
+                                name='label')
 
     return ph
 
@@ -69,6 +84,20 @@ def get_dae_graph(params, ph):
         with tf.variable_scope('encoder', reuse=False):
             z = dae_encoder_factory(x, ph, params['encoder'])
             graph['fake_z'] = z
+
+        # For evaluation
+        ns = tf.shape(ph['support'])[0]
+        q = tf.shape(ph['query'])[0]
+        n_way = tf.shape(ph['support'])[1]
+
+        sx = tf.reshape(ph['support'], tf.convert_to_tensor([ns*n_way] + params['data']['x_size']))  # [ns * k, sz]
+        qx = tf.reshape(ph['query'], tf.convert_to_tensor([nq*n_way] + params['data']['x_size']))    # [nq * k, sz]
+
+        with tf.variable_scope('encoder', reuse=True):
+            sz = graph['support_z'] = dae_encoder_factory(sx, ph, params['encoder'])
+        with tf.variable_scope('encoder', reuse=True):
+            qz = graph['query_z'] = dae_encoder_factory(qx, ph, params['encoder'])
+        graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
 
         # Decoder
         with tf.variable_scope('decoder', reuse=False):
@@ -181,12 +210,15 @@ def get_dae_targets(params, ph, graph, graph_vars):
 
     logits = -dist + log_p_y_prior
 
-    log_yz = tf.nn.softmax_cross_entropy_with_logits_v2(graph['one_hot_label'], logits, axis=1) # [b]
+    log_yz = tf.nn.softmax_cross_entropy_with_logits(label=graph['one_hot_label'], logits=logits, axis=1) # [b]
     acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits, 1), ph['label']), tf.float32))   # [1,]
 
     gen['cls_loss'] = tf.reduce_mean(log_yz)
     gen['acc_loss'] = acc
     gen['g_loss'] += gen['cls_loss'] * params['network']['cls_weight']
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, 'encoder')
+    print(update_ops)
+    gen['update'] = update_ops
 
     gen_op = tf.train.AdamOptimizer(params['network']['lr'] * ph['g_lr_decay'])
     gen_grads = gen_op.compute_gradients(loss=gen['g_loss'],
@@ -203,7 +235,10 @@ def get_dae_targets(params, ph, graph, graph_vars):
 
     targets = {
         'gen': gen,
-        'disc': disc
+        'disc': disc,
+        'eval': {
+            'acc': graph['eval_acc']
+        }
     }
 
     return targets
