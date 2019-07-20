@@ -42,11 +42,15 @@ def get_protonet_graph_var_and_targets(params, ph):
     qx = tf.reshape(ph['query'], tf.convert_to_tensor([nq*n_way] + params['data']['x_size']))    # [nq * k, sz]
 
     with tf.variable_scope('protonet', reuse=False):
-        x = tf.concat([sx, qx], axis=0)
-        z = four_block_cnn_encoder(x, params['network']['h_dim'], params['network']['z_dim'], 
-                                   ph['is_training'], reuse=False)
+        # = tf.concat([sx, qx], axis=0)
+        sz = four_block_cnn_encoder(sx, params['network']['h_dim'], params['network']['z_dim'], 
+                                    ph['is_training'], reuse=False)
 
-    sz, qz = z[:ns*n_way, :], z[ns*n_way:, :]
+    with tf.variable_scope('protonet', reuse=True):
+        # = tf.concat([sx, qx], axis=0)
+        qz = four_block_cnn_encoder(qx, params['network']['h_dim'], params['network']['z_dim'],
+                                    ph['is_training'], reuse=True)
+
     graph['support_z'], graph['query_z'] = sz, qz
 
     graph_vars = {'network': tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='protonet')}
@@ -60,11 +64,18 @@ def get_protonet_graph_var_and_targets(params, ph):
                                          var_list=graph_vars['network'])
     gen_train_op = gen_op.apply_gradients(grads_and_vars=gen_grads)
 
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    #with tf.control_dependencies(update_ops):
+
     targets = {
         'gen': {
             'train_op': gen_train_op,
             'entropy_loss': loss,
-            'acc_loss': acc
+            'acc_loss': acc,
+            'update': update_ops
+        },
+        'eval': {
+            'acc': acc
         }
     }
     return graph, save_vars, targets

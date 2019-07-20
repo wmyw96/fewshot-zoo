@@ -44,13 +44,13 @@ params = mod.generate_params()
 # set seed
 params['train']['seed'] = args.seed
 np.random.seed(args.seed)
-tf.random.set_random_seed(args.seed)
+tf.set_random_seed(args.seed)
 
 # fetch model
 if args.model == 'dae':
-    agent = DAE(params)
+    agent = DAE(params, args.gpu)
 elif args.model == 'protonet':
-    agent = SupportQueryAgent(params, )
+    agent = SupportQueryAgent(params, args.gpu)
 
 # get dataset
 
@@ -71,7 +71,7 @@ done = False
 for epoch in range(params['train']['num_epoches']):
     if params['train']['valid_interval'] is not None:
         if epoch % params['train']['valid_interval'] == 0:
-            agent.eval(epoch, valid)
+            agent.eval(epoch, valid, test)
     for iters in tqdm(range(params['train']['iter_per_epoch'])):
         done = agent.train_iter(train)
         if done:

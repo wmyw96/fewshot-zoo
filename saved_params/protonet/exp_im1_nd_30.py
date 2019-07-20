@@ -34,7 +34,7 @@ def generate_params():
         'lr': lr,
         'h_dim': h_dim,
         'z_dim': z_dim,
-        'n_decay': 20,
+        'n_decay': 30,
         'weight_decay': 0.5
     }
 

@@ -21,12 +21,15 @@ class classfication_dataset(object):
         # class-based index
         self.cb_index = []
         for i in range(self.nclass):
-            ind = np.argwhere(label == i).reshape(-1)
+            ind = np.argwhere(labels == i).reshape(-1)
             self.cb_index.append(ind)
+            print('class {}: {} - {}'.format(i, np.min(ind), np.max(ind)))
+            #print(self.labels[self.cb_index[i]])
 
         self.randomize = randomize
         self.num_pairs = len(inputs)
-        self.init_pointer()
+        self.pointer = self.num_pairs
+        #self.init_pointer()
 
     def len(self):
         return self.num_pairs
@@ -66,12 +69,15 @@ class classfication_dataset(object):
         dat_cl = []
         for i in range(batch_class):
             cid = clslist[i]
-            ind = np.random.permuation(self.cb_index[cid].shape[0])[:batch_size]
+            ind = np.random.permutation(self.cb_index[cid].shape[0])[:batch_size]
             dat = self.inputs[self.cb_index[cid][ind], :]
+            #print(self.labels[self.cb_index[cid][ind]])
             dat = np.expand_dims(dat, 1)
             dat_cl.append(dat)
         return np.concatenate(dat_cl, axis=1), self.local_label(batch_class, batch_size)
 
     def get_support_query(self, batch_class, ns, nq):
         dat, label = self.class_based_sample(batch_class, ns + nq)
-        return dat[:ns, :], dat[ns:, :], np.reshape(label, (-1))
+        #print(label)
+        #print(dat[:ns, :].shape, dat[ns:, :].shape)
+        return dat[:ns, :], dat[ns:, :], label[ns:, :]

@@ -2,7 +2,7 @@ from model.protonet import *
 from agents.utils import *
 import signal
 import matplotlib.pyplot as plt
-
+import time
 
 
 class GracefulKiller:
@@ -26,7 +26,8 @@ class SupportQueryAgent(object):
             raise NotImplementedError
         self.gpu = gpu
         self.epoch = 0
-
+        
+        #print(gpu)
         # Session and saver
         if self.gpu > -1:
             gpu_options = tf.GPUOptions(allow_growth=True)
@@ -36,7 +37,7 @@ class SupportQueryAgent(object):
         self.step = 0
 
         self.decay = 1.0
-
+        self.best_valid = 0.0
         self.losses = {}
         self.nclass = params['data']['nclass']
         self.save_model = tf.train.Saver(var_list=self.save_vars)
@@ -46,16 +47,25 @@ class SupportQueryAgent(object):
         self.sess.run(tf.global_variables_initializer())
 
     def train_iter(self, data_loader):
+        dat_time = -time.time()
         support, query, labels = \
             data_loader.get_support_query(self.params['train']['n_way'],
                 self.params['train']['shot'], self.params['train']['nq'])
+        dat_time += time.time()
+        
+        #print(query.shape)
+        #print(support.shape)
+        fetch_time = -time.time()
         fetch = self.sess.run(self.targets['gen'], 
                               feed_dict={
-                                    self.ph['support']: inputs,
-                                    self.ph['query']: labels,
+                                    self.ph['support']: support,
+                                    self.ph['query']: query,
+                                    self.ph['label']: labels, 
                                     self.ph['lr_decay']: self.decay,
                                     self.ph['is_training']: True
                               })
+        fetch_time += time.time()
+        #print('Data Time = {}, Fetch Time = {}'.format(dat_time, fetch_time))
         update_loss(fetch, self.losses)
         self.step += 1
 
@@ -77,24 +87,35 @@ class SupportQueryAgent(object):
     def take_step(self):
         self.epoch += 1
         if self.epoch % self.params['network']['n_decay'] == 0:
-            self.g_decay *= self.params['network']['weight_decay']
+            self.decay *= self.params['network']['weight_decay']
             print('Decay, Current = {}'.format(self.decay))
     
-    def eval(self, data_loader):
+    def single_eval(self, epoch, data_loader):
         accs = []
         for _ in range(self.params['test']['num_episodes']):
             support, query, labels = \
                 data_loader.get_support_query(self.params['test']['n_way'],
                     self.params['test']['shot'], self.params['test']['nq'])
-            acc = self.sess.run(self.targets['gen']['acc'], 
+            acc, k = self.sess.run([self.targets['eval']['acc'], self.graph['n_way']], 
                                   feed_dict={
-                                        self.ph['support']: inputs,
-                                        self.ph['query']: labels,
+                                        self.ph['support']: support,
+                                        self.ph['query']: query,
+                                        self.ph['label']: labels,
                                         self.ph['is_training']: False
                                   })
+            #print(k)
             accs.append(acc)
-        print('Valid Performance = {}'.format(np.mean(accs)))
+        return np.mean(accs)
+        #print('Valid Performance = {}'.format(np.mean(accs)))
+    
+    def eval(self, epoch, valid, test):
+        cur_value = self.single_eval(epoch, valid)
+        print('Epoch {}: valid performance {}'.format(epoch, cur_value))
+        if cur_value > self.best_valid:
+            self.best_valid = cur_value
+            self.test_perf = self.single_eval(epoch, test)
+        print('Current test performance {}'.format(self.test_perf))
 
     def print_log(self, epoch):
-        print_log('{} training: '.format(params['network']['model']), epoch, self.losses)
+        print_log('{} training: '.format(self.params['network']['model']), epoch, self.losses)
         self.losses = {}

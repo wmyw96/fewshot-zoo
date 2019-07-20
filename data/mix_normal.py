@@ -14,5 +14,5 @@ def mixture_gausssian_dataset(n, x_dim, n_cluster, radius, stddev):
         labels[i] = k
         inputs[i] = np.random.normal(embed[k, :], stddev)
 
-    return classfication_dataset(inputs, labels, n_cluster)
+    return {'train': classfication_dataset(inputs, labels, n_cluster)}
 
