@@ -41,15 +41,19 @@ def get_protonet_graph_var_and_targets(params, ph):
     sx = tf.reshape(ph['support'], tf.convert_to_tensor([ns*n_way] + params['data']['x_size']))  # [ns * k, sz]
     qx = tf.reshape(ph['query'], tf.convert_to_tensor([nq*n_way] + params['data']['x_size']))    # [nq * k, sz]
 
-    with tf.variable_scope('protonet', reuse=False):
-        # = tf.concat([sx, qx], axis=0)
-        sz = four_block_cnn_encoder(sx, params['network']['h_dim'], params['network']['z_dim'], 
-                                    ph['is_training'], reuse=False)
-
-    with tf.variable_scope('protonet', reuse=True):
-        # = tf.concat([sx, qx], axis=0)
-        qz = four_block_cnn_encoder(qx, params['network']['h_dim'], params['network']['z_dim'],
-                                    ph['is_training'], reuse=True)
+    if params['network']['split_feed']:
+        with tf.variable_scope('protonet', reuse=False):
+            sz = four_block_cnn_encoder(sx, params['network']['h_dim'], params['network']['z_dim'], 
+                                        ph['is_training'], reuse=False)
+        with tf.variable_scope('protonet', reuse=True):
+            qz = four_block_cnn_encoder(qx, params['network']['h_dim'], params['network']['z_dim'],
+                                        ph['is_training'], reuse=True)
+    else:
+        with tf.variable_scope('protonet', reuse=False):
+            x = tf.concat([sx, qx], 0)
+            z = four_block_cnn_encoder(x, params['network']['h_dim'], params['network']['z_dim'],
+                                       ph['is_training'], reuse=False)
+        sz, qz = z[:ns*n_way, :], z[ns*n_way:, :]
 
     graph['support_z'], graph['query_z'] = sz, qz
 

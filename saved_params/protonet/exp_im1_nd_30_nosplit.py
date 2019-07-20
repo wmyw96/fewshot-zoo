@@ -30,7 +30,7 @@ def generate_params():
     h_dim = 64
 
     network = {
-        'split_feed': True,
+        'split_feed': False,
         'model': 'protonet',
         'lr': lr,
         'h_dim': h_dim,

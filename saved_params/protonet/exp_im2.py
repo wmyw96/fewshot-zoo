@@ -10,9 +10,9 @@ def generate_params():
     }
 
     train = {
-        'n_way': 20,
+        'n_way': 30,
         'nq': 15,
-        'shot': 5,
+        'shot': 1,
         'num_epoches': 200,
         'iter_per_epoch': 100,
         'valid_interval': 1,
@@ -21,7 +21,7 @@ def generate_params():
     test = {
         'n_way': 5,
         'nq': 15,
-        'shot': 5,
+        'shot': 1,
         'num_episodes': 400,
     }
 
@@ -35,7 +35,7 @@ def generate_params():
         'lr': lr,
         'h_dim': h_dim,
         'z_dim': z_dim,
-        'n_decay': 30,
+        'n_decay': 20,
         'weight_decay': 0.5
     }
 
