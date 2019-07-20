@@ -14,7 +14,7 @@ def generate_params():
         'nq': 15,
         'shot': 1,
         'num_epoches': 200,
-        'iter_per_epoch': 100,
+        'iter_per_epoch': 150,
         'valid_interval': 1,
     }
 
