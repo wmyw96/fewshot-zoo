@@ -5,7 +5,7 @@ def generate_params():
     data = {
         'dataset': 'mini-imagenet',
         'data_dir': '../../data/mini-imagenet/',
-        'split_dir': './splits/mini-imagenet',
+        'split_dir': './splits/fake-imagenet',
         'x_size': [84, 84, 3],
         'nclass': nclass,
         'split': ['train', 'valid', 'test'],
@@ -42,7 +42,7 @@ def generate_params():
         'lr': 1e-3,
         'rec_weight': 0.0,
         'cls_weight': 1.0,
-        'n_decay': 30,
+        'n_decay': 20,
         'weight_decay': 0.5
     }
 

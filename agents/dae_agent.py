@@ -57,7 +57,7 @@ class DAE(object):
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
                                     self.ph['d_lr_decay']: self.d_decay,
-                                    self.ph['is_training']: False,
+                                    self.ph['is_training']: True,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                                   })
             update_loss(fetch, self.losses)
@@ -128,29 +128,55 @@ class DAE(object):
         self.losses = {}
 
     def single_eval(self, epoch, data_loader, n_way, shot):
-        accs = []
+        accs, acs = [], []
         for _ in range(self.params['test']['num_episodes']):
-            support, query, labels = \
-                data_loader.get_support_query(n_way, shot, self.params['test']['nq'])
-            acc, k = self.sess.run([self.targets['eval']['acc'], self.graph['n_way']], 
+            support, query, labels, _b = \
+                data_loader.get_support_query(n_way, shot, self.params['test']['nq'], True)
+            flats = np.reshape(support, [n_way * shot] + self.params['data']['x_size'])
+            flatq = np.reshape(query, [n_way * self.params['test']['nq']] + self.params['data']['x_size'])
+            flat_inp = np.concatenate([flats, flatq], 0)
+            acc, ac = self.sess.run([self.targets['eval']['acc'], self.targets['eval']['64-acc']], 
                                   feed_dict={
-                                        self.ph['support']: support,
-                                        self.ph['query']: query,
+                                        #self.ph['support']: support,
+                                        #self.ph['query']: query,
+                                        self.ph['label']: _b.squeeze(),
+                                        self.ph['data']: flat_inp,
+                                        self.ph['ns']: shot,
+                                        self.ph['nq']: self.params['test']['nq'],
+                                        self.ph['n_way']: n_way,
+                                        self.ph['p_y_prior']: data_loader.get_weight(),
                                         self.ph['eval_label']: labels,
                                         self.ph['is_training']: False
                                   })
             #print(k)
             accs.append(acc)
-        return np.mean(accs)
+            acs.append(ac)
+        return np.mean(accs), np.mean(acs)
 
+    '''def evallll(self, data_loader):
+        return None
+        accs = []
+        for _ in range(self.params['test']['num_episodes']):
+            data, label = data_loader.next_batch(100)
+            acc = self.sess.run([self.targets['eval']['64-acc']],
+                                  feed_dict={
+                                        self.ph['data']: data,
+                                        self.ph['p_y_prior']: data_loader.get_weight(),
+                                        self.ph['label']: label,
+                                        self.ph['is_training']: False
+                                  })
+            accs.append(acc)
+
+        print('Evalllll Acc = {}'.format(np.mean(accs)))'''
+    
     def eval(self, epoch, valid, test):
-        for idx in range(self.params['test']['shot']):
+        for idx in range(len(self.params['test']['shot'])):
             shot = self.params['test']['shot'][idx]
             n_way = self.params['test']['n_way'][idx]
-            cur_value = self.single_eval(epoch, valid, n_way, shot)
+            cur_value, _ = self.single_eval(epoch, valid, n_way, shot)
             if cur_value > self.best_valid[idx]:
                 self.best_valid[idx] = cur_value
-                self.test_perf[idx] = self.single_eval(epoch, test, n_way, shot)
-            print('Epoch {}: [{}-way {}-shot] valid perf {}, '
-                'test perf {}'.format(epoch, n_way, shot, cur_value, self.test_perf))
+                #self.test_perf[idx] = self.single_eval(epoch, test, n_way, shot)
+            print('Epoch {}: [{}-way {}-shot] valid perf {} ({}), '
+                'test perf {}'.format(epoch, n_way, shot, cur_value, _, self.test_perf[idx]))
 

@@ -18,8 +18,12 @@ def load_mini_imagenet(params):
     splits = pd['split']
     for split in splits:
         try:
-            data = np.load(os.path.join(data_dir, split + '-data.npy'))
-            label = np.load(os.path.join(data_dir, split + '-label.npy'))
+            name = split
+            if split == 'valid':
+                name = 'train'
+            
+            data = np.load(os.path.join(data_dir, name + '-data.npy'))
+            label = np.load(os.path.join(data_dir, name + '-label.npy'))
             nclass = np.max(label) + 1
             print('Load cached {}: {}, {}'.format(split, data.shape, label.shape))
             ret[split] = classfication_dataset(np.squeeze(data), np.squeeze(label), nclass)

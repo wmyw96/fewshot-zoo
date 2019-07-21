@@ -41,7 +41,13 @@ class classfication_dataset(object):
             np.random.shuffle(idx)
             self.inputs = self.inputs[idx, :]
             self.labels = self.labels[idx, :]
-
+        
+            self.cb_index = []
+            for i in range(self.nclass):
+                ind = np.argwhere(self.labels == i).reshape(-1)
+                self.cb_index.append(ind)
+                #print('class {}: {} - {}'.format(i, np.min(ind), np.max(ind)))
+            #print(self.labels[self.cb_index[i]])
     def next_batch(self, batch_size):
         # if batch_size is negative -> return all
         if batch_size < 0:
@@ -67,6 +73,7 @@ class classfication_dataset(object):
     def class_based_sample(self, batch_class, batch_size):
         clslist = np.random.permutation(self.nclass)[:batch_class]
         dat_cl = []
+        lb_cl = []
         for i in range(batch_class):
             cid = clslist[i]
             ind = np.random.permutation(self.cb_index[cid].shape[0])[:batch_size]
@@ -74,10 +81,14 @@ class classfication_dataset(object):
             #print(self.labels[self.cb_index[cid][ind]])
             dat = np.expand_dims(dat, 1)
             dat_cl.append(dat)
-        return np.concatenate(dat_cl, axis=1), self.local_label(batch_class, batch_size)
+            lb_cl.append(self.labels[self.cb_index[cid][ind], :])
+        return np.concatenate(dat_cl, axis=1), self.local_label(batch_class, batch_size), np.concatenate(lb_cl, 1)
 
-    def get_support_query(self, batch_class, ns, nq):
-        dat, label = self.class_based_sample(batch_class, ns + nq)
+    def get_support_query(self, batch_class, ns, nq, true_label=False):
+        dat, label, _ = self.class_based_sample(batch_class, ns + nq)
         #print(label)
         #print(dat[:ns, :].shape, dat[ns:, :].shape)
-        return dat[:ns, :], dat[ns:, :], label[ns:, :]
+        if true_label:
+            return dat[:ns, :], dat[ns:, :], label[ns:, :], np.reshape(_, (-1, ))
+        else:
+            return dat[:ns, :], dat[ns:, :], label[ns:, :]

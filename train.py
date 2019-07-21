@@ -71,6 +71,7 @@ done = False
 for epoch in range(params['train']['num_epoches']):
     if params['train']['valid_interval'] is not None:
         if epoch % params['train']['valid_interval'] == 0:
+            #agent.evallll(valid)
             agent.eval(epoch, valid, test)
     for iters in tqdm(range(params['train']['iter_per_epoch'])):
         done = agent.train_iter(train)
