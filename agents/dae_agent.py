@@ -171,7 +171,7 @@ class DAE(object):
             cur_value = self.single_eval(epoch, valid, n_way, shot)
             if cur_value > self.best_valid[idx]:
                 self.best_valid[idx] = cur_value
-                #self.test_perf[idx] = self.single_eval(epoch, test, n_way, shot)
+                self.test_perf[idx] = self.single_eval(epoch, test, n_way, shot)
             print('Epoch {}: [{}-way {}-shot] valid perf {}, '
                 'test perf {}'.format(epoch, n_way, shot, cur_value, self.test_perf[idx]))
 

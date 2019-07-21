@@ -19,8 +19,8 @@ def load_mini_imagenet(params):
     for split in splits:
         try:
             name = split
-            if split == 'valid':
-                name = 'train'
+            #if split == 'valid':
+            #    name = 'train'
             
             data = np.load(os.path.join(data_dir, name + '-data.npy'))
             label = np.load(os.path.join(data_dir, name + '-label.npy'))
