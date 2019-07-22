@@ -23,12 +23,12 @@ def gen_gan_loss(real, fake):
     return g_loss
 
 
-def kl_divergency(pu, log_ps_sq, qu):
+def kl_divergence(pu, log_ps_sq, qu):
     # pu [b, d]
     # ps [b, d]
     # qu [b, d]
     pair_kl = 0.5 * (-1 - log_ps_sq) + tf.square(pu - qu) + tf.exp(log_ps_sq)
-    return tf.reduce_sum(pair_kl, axis=1)
+    return tf.reduce_sum(pair_kl, axis=1), tf.reduce_sum(tf.square(pu - qu), axis=1)
 
 
 def wgan_gp_gp_loss(hat, hat_critic):

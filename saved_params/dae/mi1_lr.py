@@ -39,7 +39,7 @@ def generate_params():
         'z_dim': z_dim,
         'use_decoder': False,
         'e_m_weight': 0.1,
-        'lr': lr,
+        'lr': 1e-3,
         'rec_weight': 0.0,
         'cls_weight': 1.0,
         'n_decay': 30,

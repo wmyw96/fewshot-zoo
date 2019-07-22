@@ -8,7 +8,10 @@ from model.loss import *
 
 def dve_encoder_factory(inp, ph, params, reuse=True):
     if params['type'] == 'fc':
-        return feedforward(inp, ph['is_training'], params, 'fc')
+        pout = feedforward(inp, ph['is_training'], params, 'fc')
+        dim = pout.get_shape()[-1] // 2
+        print('Encoding out dim {}'.format(dim))
+        return pout[:, :dim], pout[:, dim:]
     else:
         raise NotImplementedError
 
@@ -61,6 +64,7 @@ def get_dve_ph(params):
                                 name='label')
     ph['g_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='g_lr_decay')
     ph['e_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='e_lr_decay')
+    ph['p_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='p_lr_decay')
     ph['is_training'] = tf.placeholder(dtype=tf.bool, shape=[], name='is_training')
     ph['p_y_prior'] = tf.placeholder(dtype=tf.float32, shape=[params['data']['nclass'],], 
                                      name='p_y_prior')
@@ -89,11 +93,11 @@ def get_dve_graph(params, ph):
     with tf.variable_scope('dve', reuse=False):
         # Encoder
         with tf.variable_scope('encoder', reuse=False):
-            mu_z, log_sigma_sq_z = dae_encoder_factory(x, ph, params['encoder'], False)
+            mu_z, log_sigma_sq_z = dve_encoder_factory(x, ph, params['encoder'], False)
             graph['mu_z'], graph['log_sigma_sq_z'] = mu_z, log_sigma_sq_z
             noise = tf.random_normal(tf.shape(mu_z), 0.0, 1.0, 
                                      seed=params['train']['seed'])
-            z = mu_z + tf.sqrt(tf.exp(log_sigma_sq_z)) * noise
+            z = mu_z + tf.exp(0.5 * log_sigma_sq_z) * noise
             graph['z'] = z
 
         with tf.variable_scope('embedding', reuse=False):
@@ -115,7 +119,7 @@ def get_dve_graph(params, ph):
         # Decoder
         with tf.variable_scope('decoder', reuse=False):
             if params['network']['use_decoder']:
-                x_rec = dae_decoder_factory(z, ph, params['decoder'])
+                x_rec = dve_decoder_factory(z, ph, params['decoder'])
                 graph['x_rec'] = x_rec
 
     return graph
@@ -135,8 +139,7 @@ def get_dve_vars(params, ph, graph):
     embed_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='dve/embed')
 
     graph_vars = {
-        'pretrain_vars': pretrain_vars,
-        'disc': disc_vars,
+        'pretrain': pretrain_vars,
         'encoder': encoder_vars,
         'decoder': decoder_vars,
         'embed': embed_vars,
@@ -155,8 +158,9 @@ def get_dve_targets(params, ph, graph, graph_vars):
     gen['g_loss'] = 0.0
 
     # embedding loss
-    gen['embed_loss'] = tf.reduce_mean(kl_divergence(graph['mu_z'], 
-                                                     graph['log_sigma_sq_z'], graph['gt_mu']))
+    kl, mu_d = kl_divergence(graph['mu_z'], graph['log_sigma_sq_z'], graph['gt_mu'])
+    gen['embed_loss'] = tf.reduce_mean(kl)
+    gen['distance_loss'] = tf.reduce_mean(mu_d)
 
     gen['g_loss'] += gen['embed_loss'] * params['network']['e_m_weight']
 
@@ -194,8 +198,8 @@ def get_dve_targets(params, ph, graph, graph_vars):
     pretrain_loss = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], 
         logits=graph['pt_logits'], dim=1)
     pretrain_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(graph['pt_logits'], 1), ph['label']), tf.float32))
-    pretrain_op = tf.train.AdamOptimizer(params['pretrain']['lr'] * ph['pretrain_lr_decay'])
-    pretrain_grads = pretrain_op.compute_gradients(loss=pretrain_loss
+    pretrain_op = tf.train.AdamOptimizer(params['pretrain']['lr'] * ph['p_lr_decay'])
+    pretrain_grads = pretrain_op.compute_gradients(loss=pretrain_loss,
                                           var_list=graph_vars['pretrain'])
     pretrain_train_op = pretrain_op.apply_gradients(grads_and_vars=pretrain_grads)
     pretrain_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='pretrain')
@@ -204,12 +208,12 @@ def get_dve_targets(params, ph, graph, graph_vars):
         'pretrain': {
             'train': pretrain_train_op,
             'update': pretrain_update_ops,
+            'acc': pretrain_acc,
         },
         'pretrain_eval': {
             'acc': pretrain_acc,
         },
         'gen': gen,
-        'disc': disc,
         'eval': {
             'acc': graph['eval_acc'],
         }
@@ -224,5 +228,5 @@ def build_dve_model(params):
     graph_vars, saved_vars, pretrain_vars = get_dve_vars(params, ph, graph)
     targets = get_dve_targets(params, ph, graph, graph_vars)
 
-    return ph, graph, targets, saved_vars
+    return ph, graph, targets, saved_vars, pretrain_vars
 

@@ -18,3 +18,17 @@ python train.py --exp_id protonet.exp_im2 --model protonet --gpu 0
 ```
 
 The result is 48.12\% (valid), 48.91\% (test)
+
+## Discriminative Variational Embedding (DVE)
+
+mini-imagenet dataset pretrain
+
+```
+python train.py --pretype train --model dve --exp_id dve.im --gpu 1 --pretrain_dir saved_models/dve
+```
+
+train the model
+
+```
+python train.py --type train --model dve --exp_id dve.im --gpu 1 --pretrain_dir saved_models/dve
+```

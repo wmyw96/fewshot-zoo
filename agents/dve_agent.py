@@ -21,7 +21,7 @@ class DVE(object):
         self.params = params
 
         # Build computation graph for the DDPG agent
-        self.ph, self.graph, self.targets, self.save_vars, self.pretrain_vars = build_dae_model(params)
+        self.ph, self.graph, self.targets, self.save_vars, self.pretrain_vars = build_dve_model(params)
         self.gpu = gpu
         self.epoch = 0
 
@@ -45,12 +45,27 @@ class DVE(object):
         self.killer = GracefulKiller()
 
 
-    def start(self, load_pretrain_dir=None):
+    def start(self, load_pretrain_dir=None, data_loader=None):
         self.sess.run(tf.global_variables_initializer())
+        accs = []
         if load_pretrain_dir is not None:
-            self.save_pretrain.restore(self.sess, os.path.join(save_dir, 'pretrain.ckpt'))
+            self.save_pretrain.restore(self.sess, os.path.join(load_pretrain_dir, 'pretrain.ckpt'))
+            batch_size = 400
+            for it in range(self.params['pretrain']['iter_per_epoch']):
+                inputs, labels = data_loader.next_batch(batch_size)
+                fetch = self.sess.run(self.targets['pretrain_eval'],
+                                      feed_dict={
+                                        self.ph['data']: inputs,
+                                        self.ph['label']: labels,
+                                        self.ph['p_lr_decay']: 1.0,
+                                        self.ph['is_training']: False,
+                                        self.ph['p_y_prior']: data_loader.get_weight()
+                                      })
+                accs.append(fetch['acc'])
+            print('Acc = {}'.format(np.mean(accs)))
 
     def pretrain(self, data_loader, save_dir):
+        self.sess.run(tf.global_variables_initializer())
         batch_size = self.params['pretrain']['batch_size']
         for epoch in range(self.params['pretrain']['num_epoches']):
             accs = []
@@ -66,7 +81,7 @@ class DVE(object):
                                       })
                 accs.append(fetch['acc'])
             print('Pretrain Epoch {}: Accuracy = {}'.format(epoch, np.mean(accs)))
-            self.save_pretrain.restore(self.sess, os.path.join(save_dir, 'pretrain.ckpt'))
+            self.save_pretrain.save(self.sess, os.path.join(save_dir, 'pretrain.ckpt'))
 
 
     def train_iter(self, data_loader):
@@ -84,7 +99,7 @@ class DVE(object):
                               })
         update_loss(fetch, self.losses)
         self.step += 1
-
+   
         if self.killer.kill_now:
             save_option = input('Save current model (y/[n])?')
             if save_option == 'y':

@@ -11,6 +11,7 @@ from tqdm import tqdm
 from utils import *
 from agents.dae_agent import DAE
 from agents.supportquery_agent import SupportQueryAgent
+from agents.dve_agent import DVE
 from data.dataset import load_dataset
 
 # os settings
@@ -56,6 +57,10 @@ if args.model == 'dae':
     agent = DAE(params, args.gpu)
 elif args.model == 'protonet':
     agent = SupportQueryAgent(params, args.gpu)
+elif args.model == 'dve':
+    agent = DVE(params, args.gpu)
+else:
+    raise NotImplementedError
 
 # get dataset
 
@@ -73,7 +78,7 @@ elif len(params['data']['split']) == 3:
 # start training
 if args.type == 'train':
     if args.pretrain_dir is not None:
-        agent.start(args.pretrain_dir)
+        agent.start(args.pretrain_dir, train)
     else:
         agent.start()
     done = False
