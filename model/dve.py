@@ -94,6 +94,8 @@ def get_dve_graph(params, ph):
         # Encoder
         with tf.variable_scope('encoder', reuse=False):
             mu_z, log_sigma_sq_z = dve_encoder_factory(x, ph, params['encoder'], False)
+            if params['network']['fixed']:
+                log_sigma_sq_z = tf.zeros(tf.shape(mu_z))
             graph['mu_z'], graph['log_sigma_sq_z'] = mu_z, log_sigma_sq_z
             noise = tf.random_normal(tf.shape(mu_z), 0.0, 1.0, 
                                      seed=params['train']['seed'])

@@ -23,13 +23,18 @@ def dae_decoder_factory(inp, ph, params):
         raise ValueError('Not Impelmented')
 
 
-def dae_disc_factory(inp, label, ph, params):
+def dae_disc_factory(inp, label, ph, params, return_inp=False):
     if params['type'] == 'fc':
         inp_vec = tf.get_variable('inp_vec', [params['nclass'], params['onehot_dim']], 
                                   initializer=tf.contrib.layers.variance_scaling_initializer())
         cat_vec = tf.matmul(label, inp_vec)
         inp_concat = tf.concat([inp, cat_vec], axis=1)
-        return feedforward(inp_concat, ph['is_training'], params, 'fc')
+        #if return_inp:
+        out = feedforward(inp_concat, ph['is_training'], params, 'fc')
+        if return_inp:
+            return out, inp_concat
+        else:
+            return out
     else:
         raise ValueError('Not Impelmented')
 
@@ -144,8 +149,9 @@ def get_dae_graph(params, ph):
                                       seed=params['train']['seed'])
             graph['hat_z'] = real_z * alpha + (1 - alpha) * z
             with tf.variable_scope('disc-embed', reuse=True):
-                graph['hat_z_critic'] = dae_disc_factory(graph['hat_z'], graph['one_hot_label'], 
-                                                         ph, params['disc'])
+                graph['hat_z_critic'], graph['hat_z'] = \
+                                        dae_disc_factory(graph['hat_z'], graph['one_hot_label'], 
+                                                         ph, params['disc'], True)
     return graph
 
 

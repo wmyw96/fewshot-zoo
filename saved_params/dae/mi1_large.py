@@ -29,8 +29,8 @@ def generate_params():
     reg_scale = 1e-8
     init = 'he'
     act = 'relu'
-    h_dim = 512
-    z_dim = 256
+    h_dim = 1600
+    z_dim = 1600
     #z_dim = 1600
     #h_dim = 256
 
@@ -74,7 +74,7 @@ def generate_params():
         'n_critic': 5,
         'onehot_dim': z_dim // 2,
         'nclass': nclass,
-        'num_hidden': [1600]*3 + [1],
+        'num_hidden': [h_dim * 2]*3 + [1],
         'activation': [act]*3 + [None],
         'init': [init]*4,
         'regularizer': [None]*4,
@@ -82,7 +82,7 @@ def generate_params():
     }
 
     embed = {
-        'lr': 0.1,
+        'lr': 1.0,
         'n_decay': 20,
         'weight_decay': 0.5,
         'type': 'gaussian',

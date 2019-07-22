@@ -20,7 +20,7 @@ def generate_params():
 
     train = {
         'batch_size': 600,
-        'num_epoches': 500,
+        'num_epoches': 100,
         'iter_per_epoch': 64,
         'valid_interval': 1,
     }
@@ -32,7 +32,7 @@ def generate_params():
         'num_episodes': 400,
     }
 
-    lr = 1e-3
+    lr = 2e-3
     reg_scale = 1e-8
     init = 'he'
     act = 'relu'
@@ -43,6 +43,7 @@ def generate_params():
 
     network = {
         'nclass': nclass,
+        'fixed': True,
         'z_dim': z_dim,
         'use_decoder': True,
         'e_m_weight': 0.01,
@@ -50,25 +51,27 @@ def generate_params():
         'rec_weight': 0.01,
         'cls_weight': 1.0,
         'n_decay': 40,
-        'weight_decay': 0.5
+        'weight_decay': 0.2
     }
+    
+    nlayer = 2
 
     encoder = {
         'type': 'fc',
-        'num_hidden': [h_dim]*2 + [z_dim * 2],
-        'activation': [act]*2 + [None],
-        'init': [init]*3,
-        'regularizer': [None]*3,
-        'reg_scale': [reg_scale]*3
+        'num_hidden': [h_dim] * (nlayer - 1) + [z_dim * 2],
+        'activation': [act] * (nlayer - 1)+ [None],
+        'init': [init]*nlayer,
+        'regularizer': [None]*nlayer,
+        'reg_scale': [reg_scale]*nlayer
     }
 
     decoder = {
         'type': 'fc',
-        'num_hidden': [h_dim]*2 + [z_dim],
-        'activation': [act]*2 + [None],
-        'init': [init]*3,
-        'regularizer': [None]*3,
-        'reg_scale': [reg_scale]*3    
+        'num_hidden': [h_dim] * (nlayer - 1) + [z_dim],
+        'activation': [act] * (nlayer - 1) + [None],
+        'init': [init]*nlayer,
+        'regularizer': [None]*nlayer,
+        'reg_scale': [reg_scale]*nlayer    
     }
 
     embed = {
