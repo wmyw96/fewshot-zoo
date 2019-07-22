@@ -25,8 +25,13 @@ parser.add_argument('--seed', default=0, type=int)
 parser.add_argument('--exp_id', default='dae.exp_syn1', type=str)
 parser.add_argument('--gpu', default=-1, type=int)
 parser.add_argument('--model', default='dae', type=str)
+parser.add_argument('--pretrain_dir', default='', type=str)
+parser.add_argument('--type', default='train', type=str)
 
 args = parser.parse_args()
+
+if len(args.pretrain_dir) < 2:
+    args.pretrain_dir = None
 
 # GPU settings
 if args.gpu > -1:
@@ -66,20 +71,25 @@ elif len(params['data']['split']) == 3:
     train, valid, test = dataset['train'], dataset['valid'], dataset['test']
 
 # start training
-agent.start()
-done = False
-for epoch in range(params['train']['num_epoches']):
-    if params['train']['valid_interval'] is not None:
-        if epoch % params['train']['valid_interval'] == 0:
-            #agent.evallll(valid)
-            agent.eval(epoch, valid, test)
-    for iters in tqdm(range(params['train']['iter_per_epoch'])):
-        done = agent.train_iter(train)
+if args.type == 'train':
+    if args.pretrain_dir is not None:
+        agent.start(args.pretrain_dir)
+    else:
+        agent.start()
+    done = False
+    for epoch in range(params['train']['num_epoches']):
+        if params['train']['valid_interval'] is not None:
+            if epoch % params['train']['valid_interval'] == 0:
+                #agent.evallll(valid)
+                agent.eval(epoch, valid, test)
+        for iters in tqdm(range(params['train']['iter_per_epoch'])):
+            done = agent.train_iter(train)
+            if done:
+                break
+        agent.print_log(epoch)
+        #agent.visualize2d('logs/syn2d', train, epoch, color_set)
+        agent.take_step()
         if done:
             break
-    agent.print_log(epoch)
-    #agent.visualize2d('logs/syn2d', train, epoch, color_set)
-    agent.take_step()
-    if done:
-        break
-
+elif args.type == 'pretrain':
+    agent.pretrain(train, args.pretrain_dir)
