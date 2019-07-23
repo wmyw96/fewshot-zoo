@@ -3,6 +3,7 @@ def generate_params():
     nclass = 64
 
     data = {
+        'rot': False,
         'dataset': 'mini-imagenet',
         'data_dir': '../../data/mini-imagenet/',
         'split_dir': './splits/mini-imagenet',
@@ -12,7 +13,7 @@ def generate_params():
     }
 
     train = {
-        'batch_size': 600,
+        'batch_size': 200,
         'num_epoches': 500,
         'iter_per_epoch': 150,
         'valid_interval': 1,
@@ -29,8 +30,8 @@ def generate_params():
     reg_scale = 1e-8
     init = 'xavier'
     act = 'relu'
-    h_dim = 512
-    z_dim = 256
+    h_dim = 1024
+    z_dim = 512
     #z_dim = 1600
     #h_dim = 256
 
@@ -38,8 +39,8 @@ def generate_params():
         'nclass': nclass,
         'z_dim': z_dim,
         'use_decoder': False,
-        'e_m_weight': 0.1,
-        'lr': 1e-3,
+        'e_m_weight': 1.0,
+        'lr': lr,
         'rec_weight': 0.0,
         'cls_weight': 1.0,
         'n_decay': 30,
@@ -48,11 +49,11 @@ def generate_params():
 
     encoder = {
         'type': '4blockcnn',
-        'num_hidden': [h_dim]*2 + [z_dim],
-        'activation': [act]*2 + [None],
-        'init': [init]*3,
-        'regularizer': [None]*3,
-        'reg_scale': [reg_scale]*3
+        'num_hidden': [h_dim]*1 + [z_dim],
+        'activation': [act]*1 + [None],
+        'init': [init]*2,
+        'regularizer': [None]*2,
+        'reg_scale': [reg_scale]*2
     }
 
     '''decoder = {
@@ -82,9 +83,9 @@ def generate_params():
     }
 
     embed = {
-        'lr': 0.1,
+        'lr': 3.0,
         'n_decay': 20,
-        'weight_decay': 0.5,
+        'weight_decay': 1.0,
         'type': 'gaussian',
         'stddev': 1.0
     }

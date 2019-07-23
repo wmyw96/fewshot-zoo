@@ -10,6 +10,7 @@ class classfication_dataset(object):
             self.labels = np.reshape(self.labels,
                                      [self.labels.shape[0], 1])
         assert len(self.inputs) == len(self.labels)
+        print('Image Scale = {}'.format(np.max(self.inputs)))
 
         # calculate p(y) prior
         if calc_weight:

@@ -237,10 +237,14 @@ def get_dae_targets(params, ph, graph, graph_vars):
                                           var_list=graph_vars['gen'])
     gen_train_op = gen_op.apply_gradients(grads_and_vars=gen_grads)
 
+    #global_step_embed = tf.Variable(tf.constant(0))
+    #embed_lr = tf.train.exponential_decay(0.01, global_step_embed, 
+    #                                      int(80 * 2), 0.95, staircase=True)
+    #embed_op = tf.train.GradientDescentOptimizer(embed_lr)
     embed_op = tf.train.AdamOptimizer(params['embedding']['lr'] * ph['e_lr_decay'])
     embed_grads = embed_op.compute_gradients(loss=gen['g_loss'],
                                             var_list=graph_vars['embed'])
-    embed_train_op = embed_op.apply_gradients(grads_and_vars=embed_grads)
+    embed_train_op = embed_op.apply_gradients(grads_and_vars=embed_grads) #, global_step=global_step_embed)
 
     gen['train_gen'] = gen_train_op
     gen['train_embed'] = embed_train_op

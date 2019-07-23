@@ -51,6 +51,7 @@ class DVE(object):
         if load_pretrain_dir is not None:
             self.save_pretrain.restore(self.sess, os.path.join(load_pretrain_dir, 'pretrain.ckpt'))
             batch_size = 400
+            embed = [ [] for i in range(self.nclass) ]
             for it in range(self.params['pretrain']['iter_per_epoch']):
                 inputs, labels = data_loader.next_batch(batch_size)
                 fetch = self.sess.run(self.targets['pretrain_eval'],
@@ -61,7 +62,15 @@ class DVE(object):
                                         self.ph['is_training']: False,
                                         self.ph['p_y_prior']: data_loader.get_weight()
                                       })
+                z = self.sess.run(self.graph['mu_z'], feed_dict={self.ph['data']: inputs,
+                                                                 self.ph['is_training']: False})
+                for i in range(labels.shape[0]):
+                    embed[int(labels[i])].append(np.expand_dims(z[i, :], 0))
                 accs.append(fetch['acc'])
+            for clsid in range(self.nclass):
+                embed[clsid] = np.mean(np.concatenate(embed[clsid], 0), 0, keepdims=True)
+            embed = np.concatenate(embed, 0)
+            #self.sess.run(self.targets['assign_embed'], feed_dict={self.ph['cd_embed']: embed})
             print('Acc = {}'.format(np.mean(accs)))
 
     def pretrain(self, data_loader, save_dir):
@@ -116,14 +125,8 @@ class DVE(object):
         return False
     
     def take_step(self):
-        self.epoch += 1
-        if self.epoch % self.params['network']['n_decay'] == 0:
-            self.g_decay *= self.params['network']['weight_decay']
-            print('G Decay, Current = {}'.format(self.g_decay))
-        if self.epoch % self.params['embedding']['n_decay'] == 0:
-            self.e_decay *= self.params['embedding']['weight_decay']
-            print('E Decay, Current = {}'.format(self.e_decay))
-        
+        self.step += 1
+ 
     def print_log(self, epoch):
         print_log('DVE Training: ', epoch, self.losses)
         self.losses = {}

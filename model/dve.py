@@ -75,6 +75,7 @@ def get_dve_ph(params):
     ph['eval_label'] = tf.placeholder(dtype=tf.int64,
                                 shape=[None, None],
                                 name='label')
+    ph['cd_embed'] = tf.placeholder(dtype=tf.float32, shape=[params['data']['nclass'], params['network']['z_dim']], name='cd_embed')
 
     return ph
 
@@ -83,23 +84,22 @@ def get_dve_graph(params, ph):
     rx = ph['data']            # [b, *x.shape]
     with tf.variable_scope('pretrain'):
         graph['x'] = x = dve_pretrain_encoder_factory(rx, ph)
-        graph['pt_logits'] = tf.layers.dense(graph['x'], params['data']['nclass'], activation=None)
+        fc = tf.layers.dense(graph['x'], 1024, activation=tf.nn.relu)
+        graph['pt_logits'] = tf.layers.dense(fc, params['data']['nclass'], activation=None)
 
-    # !TODO: remove batch_size dependency
-    batch_size = params['train']['batch_size']
     z_dim = params['network']['z_dim']
 
     graph['one_hot_label'] = tf.one_hot(ph['label'], params['data']['nclass'])  # [b, K]
     with tf.variable_scope('dve', reuse=False):
         # Encoder
         with tf.variable_scope('encoder', reuse=False):
-            mu_z, log_sigma_sq_z = dve_encoder_factory(x, ph, params['encoder'], False)
-            if params['network']['fixed']:
-                log_sigma_sq_z = tf.zeros(tf.shape(mu_z))
-            graph['mu_z'], graph['log_sigma_sq_z'] = mu_z, log_sigma_sq_z
+            mu_z, sigma_z = dve_encoder_factory(x, ph, params['encoder'], False)
+            #if params['network']['fixed']:
+            #    log_sigma_sq_z = tf.zeros(tf.shape(mu_z))
+            graph['mu_z'], graph['sigma_z'] = mu_z, sigma_z
             noise = tf.random_normal(tf.shape(mu_z), 0.0, 1.0, 
                                      seed=params['train']['seed'])
-            z = mu_z + tf.exp(0.5 * log_sigma_sq_z) * noise
+            z = mu_z + tf.exp(0.5 * sigma_z) * noise
             graph['z'] = z
 
         with tf.variable_scope('embedding', reuse=False):
@@ -111,6 +111,7 @@ def get_dve_graph(params, ph):
                                     initializer=tf.random_normal_initializer)
 
                 graph['gt_mu'] = tf.gather(graph['mu'], ph['label'], axis=0)
+
 
         ns, nq, n_way = ph['ns'], ph['nq'], ph['n_way']
         
@@ -124,6 +125,8 @@ def get_dve_graph(params, ph):
                 x_rec = dve_decoder_factory(z, ph, params['decoder'])
                 graph['x_rec'] = x_rec
 
+    graph['step_embed'] = tf.Variable(tf.constant(0))
+    graph['step_gen'] = tf.Variable(tf.constant(0))
     return graph
 
 
@@ -160,7 +163,7 @@ def get_dve_targets(params, ph, graph, graph_vars):
     gen['g_loss'] = 0.0
 
     # embedding loss
-    kl, mu_d = kl_divergence(graph['mu_z'], graph['log_sigma_sq_z'], graph['gt_mu'])
+    kl, mu_d = kl_divergence(graph['mu_z'], graph['sigma_z'], graph['gt_mu'])
     gen['embed_loss'] = tf.reduce_mean(kl)
     gen['distance_loss'] = tf.reduce_mean(mu_d)
 
@@ -168,14 +171,14 @@ def get_dve_targets(params, ph, graph, graph_vars):
 
     # reconstruction loss
     if params['network']['use_decoder']:
-        gen['rec_loss'] = tf.reduce_mean(tf.square(graph['x'] - graph['x_rec']))
+        gen['rec_loss'] = tf.reduce_mean(tf.reduce_sum(tf.square(graph['x'] - graph['x_rec']), 1))
         gen['g_loss'] += gen['rec_loss'] * params['network']['rec_weight']
 
     # classfication loss
     log_p_y_prior = tf.log(tf.expand_dims(ph['p_y_prior'], 0))      # [1, K]
-    dist = euclidean_distance(graph['z'], graph['mu'])         # [b, K]
+    dist = euclidean_distance(graph['z'], graph['mu']) / 2.0       # [b, K]
 
-    logits = -dist + log_p_y_prior
+    logits = -dist #+ log_p_y_prior
 
     log_yz = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], logits=logits, dim=1) # [b]
     acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits, 1), ph['label']), tf.float32))   # [1,]
@@ -183,16 +186,21 @@ def get_dve_targets(params, ph, graph, graph_vars):
     gen['cls_loss'] = tf.reduce_mean(log_yz)
     gen['acc_loss'] = acc
     gen['g_loss'] += gen['cls_loss'] * params['network']['cls_weight']
+    
 
-    gen_op = tf.train.AdamOptimizer(params['network']['lr'] * ph['g_lr_decay'])
+    gen_lr = tf.train.exponential_decay(params['network']['lr'], graph['step_gen'], params['network']['n_decay'], 
+                                        params['network']['decay_weight'], staircase=True)
+    gen_op = tf.train.GradientDescentOptimizer(gen_lr)
     gen_grads = gen_op.compute_gradients(loss=gen['g_loss'],
                                           var_list=graph_vars['gen'])
-    gen_train_op = gen_op.apply_gradients(grads_and_vars=gen_grads)
+    gen_train_op = gen_op.apply_gradients(grads_and_vars=gen_grads, global_step=graph['step_gen'])
 
-    embed_op = tf.train.AdamOptimizer(params['embedding']['lr'] * ph['e_lr_decay'])
+    embed_lr = tf.train.exponential_decay(params['embedding']['lr'], graph['step_embed'], params['embedding']['n_decay'],
+                                          params['embedding']['decay_weight'], staircase=True)
+    embed_op = tf.train.GradientDescentOptimizer(embed_lr)
     embed_grads = embed_op.compute_gradients(loss=gen['g_loss'],
                                             var_list=graph_vars['embed'])
-    embed_train_op = embed_op.apply_gradients(grads_and_vars=embed_grads)
+    embed_train_op = embed_op.apply_gradients(grads_and_vars=embed_grads, global_step=graph['step_embed'])
 
     gen['train_gen'] = gen_train_op
     gen['train_embed'] = embed_train_op
@@ -218,6 +226,9 @@ def get_dve_targets(params, ph, graph, graph_vars):
         'gen': gen,
         'eval': {
             'acc': graph['eval_acc'],
+        },
+        'assign_embed': {
+            'assign': tf.assign(graph['mu'], ph['cd_embed'])
         }
     }
 
