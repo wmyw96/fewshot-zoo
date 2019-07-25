@@ -4,6 +4,7 @@ from model.network import *
 from model.layers import *
 from model.network import *
 from model.loss import *
+import tensorflow.contrib.slim as slim
 
 
 def dve_encoder_factory(inp, ph, params, reuse=True):
@@ -21,6 +22,41 @@ def dve_decoder_factory(inp, ph, params):
         return feedforward(inp, ph['is_training'], params, 'fc')
     else:
         raise ValueError('Not Impelmented')
+
+
+#def regularized_pretrain_network(inp, ph):
+#import tensorflow.contrib.slim as slim
+
+
+# Create model of CNN with slim api
+def reg_CNN(inputs, is_training=True):
+    batch_norm_params = {'is_training': is_training, 'decay': 0.9, 'updates_collections': None}
+    with slim.arg_scope([slim.conv2d, slim.fully_connected],
+                        activation_fn=tf.nn.relu,
+                        weights_initializer=tf.truncated_normal_initializer(0.0, 0.01),
+                        weights_regularizer=slim.l2_regularizer(0.0005),
+                        normalizer_fn=slim.batch_norm,
+                        normalizer_params=batch_norm_params):
+        nf = 64
+        x = tf.reshape(inputs, [-1, 84, 84, 3])
+        net = slim.conv2d(x, nf, [3, 3], scope='conv1', padding='SAME')
+        net = slim.max_pool2d(net, [2, 2], scope='pool1')
+        net = slim.conv2d(net, nf, [3, 3], scope='conv2', padding='SAME')
+        net = slim.max_pool2d(net, [2, 2], scope='pool2')
+        net = slim.conv2d(net, nf, [3, 3], scope='conv3', padding='SAME')
+        net = slim.max_pool2d(net, [2, 2], scope='pool3')
+        net = slim.conv2d(net, nf, [3, 3], scope='conv4', padding='SAME')
+        net = slim.max_pool2d(net, [2, 2], scope='pool4')
+        net = slim.flatten(net, scope='flatten')
+        z = tf.identity(net)
+        net = slim.fully_connected(net, 1024, scope='fc1')
+        net = slim.dropout(net, is_training=is_training, scope='dropout1')  # 0.5 by default
+        outputs = slim.fully_connected(net, 64, activation_fn=None, normalizer_fn=None, scope='fco')
+    return outputs, z
+
+
+def regularized_pretrain_network(inp, ph):
+    return reg_CNN(inp, ph['is_training'])
 
 
 def dve_pretrain_encoder_factory(inp, ph):
@@ -83,10 +119,13 @@ def get_dve_graph(params, ph):
     graph = {}
     rx = ph['data']            # [b, *x.shape]
     with tf.variable_scope('pretrain'):
-        graph['x'] = x = dve_pretrain_encoder_factory(rx, ph)
+        #graph['x'], graph['pt_logits'] = regularized_pretrain_network(rx, ph)
+        x = dve_pretrain_encoder_factory(rx, ph)
+        graph['x'] = tf.layers.batch_normalization(x, training=ph['is_training'])
         fc = tf.layers.dense(graph['x'], 1024, activation=tf.nn.relu)
         graph['pt_logits'] = tf.layers.dense(fc, params['data']['nclass'], activation=None)
-
+    x = graph['x']
+    
     z_dim = params['network']['z_dim']
 
     graph['one_hot_label'] = tf.one_hot(ph['label'], params['data']['nclass'])  # [b, K]

@@ -3,7 +3,7 @@ def generate_params():
     nclass = 64
 
     data = {
-        'rot': False,
+        'rot': True,
         'dataset': 'mini-imagenet',
         'data_dir': '../../data/mini-imagenet/',
         'split_dir': './splits/mini-imagenet',
@@ -15,16 +15,16 @@ def generate_params():
     pretrain = {
         'lr': 1e-3,
         'batch_size': 400,
-        'num_epoches': 50,
-        'iter_per_epoch': 100,
+        'num_epoches': 120,
+        'iter_per_epoch': 400,
     }
 
-    batch_size = 600
+    batch_size = 300
 
     train = {
         'batch_size': batch_size,
         'num_epoches': 100,
-        'iter_per_epoch': 120,
+        'iter_per_epoch': 128,
         'valid_interval': 1,
     }
 
@@ -78,7 +78,7 @@ def generate_params():
     }
    
     embed = {
-        'lr': 1.0,
+        'lr': 0.1,
         'n_decay': n_decay,
         'decay_weight': 0.95,
         'type': 'gaussian',

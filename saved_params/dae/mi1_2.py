@@ -13,7 +13,7 @@ def generate_params():
     }
 
     train = {
-        'batch_size': 200,
+        'batch_size': 300,
         'num_epoches': 500,
         'iter_per_epoch': 150,
         'valid_interval': 1,
@@ -73,7 +73,7 @@ def generate_params():
         'type': 'fc',
         'gp_weight': 10.0,
         'n_critic': 5,
-        'onehot_dim': z_dim // 2,
+        'onehot_dim': z_dim,
         'nclass': nclass,
         'num_hidden': [1600]*3 + [1],
         'activation': [act]*3 + [None],
@@ -83,7 +83,7 @@ def generate_params():
     }
 
     embed = {
-        'lr': 1.0,
+        'lr': 3.0,
         'n_decay': 20,
         'weight_decay': 1.0,
         'type': 'gaussian',
