@@ -41,7 +41,8 @@ class DVE(object):
         self.losses = {}
         self.nclass = params['data']['nclass']
         self.save_model = tf.train.Saver(var_list=self.save_vars)
-        self.save_pretrain = tf.train.Saver(var_list=self.pretrain_vars)
+        if params['data']['dataset'] == 'mini-imagenet':
+            self.save_pretrain = tf.train.Saver(var_list=self.pretrain_vars)
         self.killer = GracefulKiller()
 
 

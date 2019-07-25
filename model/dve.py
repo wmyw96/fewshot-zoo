@@ -117,14 +117,17 @@ def get_dve_ph(params):
 
 def get_dve_graph(params, ph):
     graph = {}
-    rx = ph['data']            # [b, *x.shape]
-    with tf.variable_scope('pretrain'):
-        #graph['x'], graph['pt_logits'] = regularized_pretrain_network(rx, ph)
-        x = dve_pretrain_encoder_factory(rx, ph)
-        graph['x'] = tf.layers.batch_normalization(x, training=ph['is_training'])
-        fc = tf.layers.dense(graph['x'], 1024, activation=tf.nn.relu)
-        graph['pt_logits'] = tf.layers.dense(fc, params['data']['nclass'], activation=None)
-    x = graph['x']
+    if params['data']['dataset'] == 'mini-imagenet':
+        rx = ph['data']            # [b, *x.shape]
+        with tf.variable_scope('pretrain'):
+            #graph['x'], graph['pt_logits'] = regularized_pretrain_network(rx, ph)
+            x = dve_pretrain_encoder_factory(rx, ph)
+            graph['x'] = tf.layers.batch_normalization(x, training=ph['is_training'])
+            fc = tf.layers.dense(graph['x'], 1024, activation=tf.nn.relu)
+            graph['pt_logits'] = tf.layers.dense(fc, params['data']['nclass'], activation=None)
+        x = graph['x']
+    else:
+        x = graph['x'] = ph['data']
     
     z_dim = params['network']['z_dim']
 
@@ -244,24 +247,28 @@ def get_dve_targets(params, ph, graph, graph_vars):
     gen['train_gen'] = gen_train_op
     gen['train_embed'] = embed_train_op
 
-    pretrain_loss = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], 
-        logits=graph['pt_logits'], dim=1)
-    pretrain_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(graph['pt_logits'], 1), ph['label']), tf.float32))
-    pretrain_op = tf.train.AdamOptimizer(params['pretrain']['lr'] * ph['p_lr_decay'])
-    pretrain_grads = pretrain_op.compute_gradients(loss=pretrain_loss,
+    if params['data']['dataset'] == 'mini-imagenet':
+        pretrain_loss = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], 
+            logits=graph['pt_logits'], dim=1)
+        pretrain_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(graph['pt_logits'], 1), ph['label']), tf.float32))
+        pretrain_op = tf.train.AdamOptimizer(params['pretrain']['lr'] * ph['p_lr_decay'])
+        pretrain_grads = pretrain_op.compute_gradients(loss=pretrain_loss,
                                           var_list=graph_vars['pretrain'])
-    pretrain_train_op = pretrain_op.apply_gradients(grads_and_vars=pretrain_grads)
-    pretrain_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='pretrain')
-
-    targets = {
-        'pretrain': {
+        pretrain_train_op = pretrain_op.apply_gradients(grads_and_vars=pretrain_grads)
+        pretrain_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='pretrain')
+        pretrain = {
             'train': pretrain_train_op,
             'update': pretrain_update_ops,
             'acc': pretrain_acc,
-        },
-        'pretrain_eval': {
-            'acc': pretrain_acc,
-        },
+        }
+        pretrain_eval = {'acc': pretrain_acc}
+    else:
+        pretrain = {}
+        pretrain_eval = {}
+
+    targets = {
+        'pretrain': pretrain,
+        'pretrain_eval': pretrain_eval,
         'gen': gen,
         'eval': {
             'acc': graph['eval_acc'],

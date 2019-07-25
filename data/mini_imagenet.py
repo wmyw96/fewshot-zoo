@@ -83,3 +83,21 @@ def load_mini_imagenet(params):
             ret[split] = classfication_dataset(np.array(data), np.concatenate(label, 0), cnt + 1)
             
     return ret
+
+
+def load_embed_mini_imagenet(params):
+    pd = params['data']
+    splits = pd['split']
+    ret = {}
+    for split in splits:
+        gname = split
+        data_path = pd['data_path'].format(split)
+        label_path = pd['label_path'].format(split)
+        x_dim = pd['x_size'][0]
+        inputs = np.reshape(np.load(data_path), (-1, x_dim))
+        labels = np.reshape(np.load(label_path), (-1, ))
+        print('Split [{}]: number of classes = {}'.format(split, np.max(labels) + 1))
+        ret[split] = classfication_dataset(inputs, labels, int(np.max(labels)) + 1)
+    return ret
+
+        
