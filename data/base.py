@@ -49,6 +49,7 @@ class classfication_dataset(object):
                 self.cb_index.append(ind)
                 #print('class {}: {} - {}'.format(i, np.min(ind), np.max(ind)))
             #print(self.labels[self.cb_index[i]])
+
     def next_batch(self, batch_size):
         # if batch_size is negative -> return all
         if batch_size < 0:
@@ -93,3 +94,8 @@ class classfication_dataset(object):
             return dat[:ns, :], dat[ns:, :], label[ns:, :], np.reshape(_, (-1, ))
         else:
             return dat[:ns, :], dat[ns:, :], label[ns:, :]
+
+    def sample_from_class(self, clsid, batch_size):
+        ind = np.random.permutation(self.cb_index[clsid].shape[0])[:batch_size]
+        return self.inputs[self.cb_index[cid][ind], :]
+    

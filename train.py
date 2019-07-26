@@ -13,6 +13,7 @@ from agents.dae_agent import DAE
 from agents.supportquery_agent import SupportQueryAgent
 from agents.dve_agent import DVE
 from data.dataset import load_dataset
+from agents.utils import *
 
 # os settings
 sys.path.append(os.getcwd() + '/..')
@@ -20,7 +21,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Parse cmdline args
 parser = argparse.ArgumentParser(description='Few-Shot-Learning')
-parser.add_argument('--logdir', default='./logs/temp', type=str)
+parser.add_argument('--logdir', default='../data/fewshot-zoo-logs/', type=str)
 
 parser.add_argument('--seed', default=0, type=int)
 parser.add_argument('--exp_id', default='dae.exp_syn1', type=str)
@@ -28,6 +29,7 @@ parser.add_argument('--gpu', default=-1, type=int)
 parser.add_argument('--model', default='dae', type=str)
 parser.add_argument('--pretrain_dir', default='', type=str)
 parser.add_argument('--type', default='train', type=str)
+parser.add_argument('--stat', default=0, type=int)
 
 args = parser.parse_args()
 
@@ -52,9 +54,13 @@ params['train']['seed'] = args.seed
 np.random.seed(args.seed)
 tf.set_random_seed(args.seed)
 
+log_dir = os.path.join(args.logdir, args.exp_id + datetime.datetime.now().strftime('%m_%d_%H_%M'))
+print('Experiment Logs will be written at {}'.format(log_dir))
+logger = LogWriter(logdir, 'main.log')
+
 # fetch model
 if args.model == 'dae':
-    agent = DAE(params, args.gpu)
+    agent = DAE(params, logger, args.gpu)
 elif args.model == 'protonet':
     agent = SupportQueryAgent(params, args.gpu)
 elif args.model == 'dve':
@@ -94,6 +100,11 @@ if args.type == 'train':
         agent.print_log(epoch)
         #agent.visualize2d('logs/syn2d', train, epoch, color_set)
         agent.take_step()
+        if args.stat:
+            agent.get_statistics(epoch, 'train', train)
+            agent.get_statistics(epoch, 'train', train)
+            agent.get_statistics(epoch, 'train', train)
+
         if done:
             break
 elif args.type == 'pretrain':
