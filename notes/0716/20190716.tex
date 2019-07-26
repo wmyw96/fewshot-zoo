@@ -1,0 +1,149 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+
+\title{Small Sample Learning GAN Implementation}
+\author{}
+
+\begin{document}
+
+\maketitle
+
+\section{Model, Loss and Algorithm}
+
+Consider data-label distribution $(x, y) \sim p(x|y) \mu(y)$, where $x \in \mathbb{R}^d$, and $y \in \{1, 2, \cdots, K\}$. We want to learn a class-independent embedding function $g_\theta(x): x \to z \in \mathbb{R}^h$, so that (for a fixed y)
+
+\begin{equation}
+\label{embed-match}
+    g_\theta(x) | y \sim P(z|y)=\mathcal{N}(\xi_y, \sigma^2I)
+\end{equation}, where $\xi_y, \theta$ are both parameters that should be learned from data.
+
+If we use WGAN-GP loss, the embedding matching objective could be written as 
+
+\begin{equation}
+    \mathcal{L}_{e}^{(y)}(\theta, \phi_y) = \mathbb{E}_{z\sim\mathcal{N}(\xi_y, \sigma^2I)}[D_{\phi_y}(z)]-\mathbb{E}_{x|y}[D_{\phi_y}(g_\theta(x))] + \lambda \mathcal{L}_{e, gp}^{(y)}(\phi_y)
+\end{equation}, where\begin{equation}
+    \mathcal{L}_{e, gp}^{(y)}(\phi_y) = \mathbb{E}_{\hat{z} = \epsilon z + (1 - \epsilon)g_\theta(x)}[ (\|\nabla_z D_{\phi_y}(\hat{z})\|_2 - 1)^2]
+\end{equation}
+
+The optimization of embedding matching objective is a min-max game with respect to $\theta$ and $\{\phi_y\}$
+
+\begin{equation}
+    \min_{\theta} \max_{\{\phi_y\}} \mathcal{L}_e(\theta, \{\phi_y\}_{y=1}^K) \equiv \mathbb{E}_{y \sim \mu(y)} [\mathcal{L}_{e}^{(y)}(\theta, \phi_y)]
+\end{equation}
+
+It should be emphasized that we should learn $K$ different discriminators to learn a required embedding generator $g_\theta$.
+
+We also incorporate in a discriminative objective $\mathcal{L}_{d}$
+
+\begin{equation}
+\label{discr-loss}
+    \mathcal{L}_d(\theta, \{\xi_y\}) = \mathbb{E}_{(x, y)}[-\log (P(y|z=g_\theta(x)))]
+\end{equation}, where 
+
+\begin{equation}
+\label{bayes}
+    P(y|z)=\frac{\mu(y) P(z|y)}{\sum_{y'} \mu(y') P(z|y')}
+\end{equation}
+
+Then the overall objective we want to optimize is
+
+\begin{equation}
+    \mathcal{L} (\theta, \{\xi_y\}, \{\phi_y\}) = \min_{\theta, \{\xi_y\}} \mathcal{L}_d(\theta, \{\xi_y\}) + \max_{\{\phi_y\}} \mathcal{L}_e(\theta, \{\phi_y\}_{y=1}^K)
+\end{equation}
+
+\noindent \textbf{Comments} I thought that we could directly apply $g_\theta(x)$ to Eq \ref{bayes} and obtain Eq \ref{discr-loss} if the embedding matching objective (Eq \ref{embed-match}) holds. However, during the training process, it might be biased (since in the beginning, Eq \ref{embed-match} doesn't hold)
+
+The learning process could be summarized as following:
+
+\begin{algorithm}
+    \caption{SmallclassGAN Learning}
+    \begin{algorithmic}
+        \STATE{\textbf{Input}: Data and data hyperparameters: $K$, $\{x_i,y_i\}_{i=1}^N$, $\sigma$}
+        \STATE{\textbf{Input}: WGAN-GP training hyperparameters: $\lambda$, $n_{c}$}
+        \STATE{\textbf{Input}: Updating hyperparameters: initial learning rate $l_g$, $l_d$, $l_e$, batch size $B_d, B_g, C$, AdamOptim hyperparameters $(\beta_1, \beta_2)$}
+        
+        \STATE{\textbf{Output}: parameters $\theta$, $\xi_y$ and $\phi_y$}
+
+        \STATE{Initialize all the parameters}
+        \FOR{$iter=0, 1, 2, \cdots$}
+            \STATE{Sample a batch of $C$ classes according to $\mu(y)$: $\{y_1, y_2, \cdots, y_C\}$}
+            \FOR{$k=0, 1, \cdots, n_c$}
+                \FOR{$i=0, 1, \cdots, C$}
+                    \STATE{Sample a batch of $z \sim \mathcal{N}(\xi_{y_i}, \sigma^2I)$: $\{z_{i,j}\}_{j=1}^{B_d}$}
+                    \STATE{Sample a batch of $B_d$ data whose labels are $y_i$: $\{x_{i,1}, \cdots, x_{i, B_d}\}$}
+                    \STATE{Calculate embedding using $g_\theta$: $\tilde{z}_{i, j} = g_\theta(x_{i, j})$}
+                    \STATE{Update $\phi_{y_i}$ by estimating $\nabla_{\phi_{y_i}} \mathcal{L}_{e}^{(y_i)}(\theta, \phi_{y_i})$ using sampled $z$ and $\tilde{z}$}
+                \ENDFOR
+            \ENDFOR
+            \STATE{Sample a batch of $B_g$ data whose labels are $y_i$ for each $i$: $\{x_{i, j}\}_{i,j=1,1}^{C, B_g}$}
+            \STATE{Calculate embedding using $g_\theta$: $\tilde{z}_{i, j} = g_\theta(x_{i, j})$}
+            \STATE{Update $\theta$ by estimating $\nabla_{\theta} \mathcal{L} (\theta, \{\xi_y\}, \{\phi_y\})$ using $\tilde{z}$}
+            \STATE{Update $\{\xi_y\}_{y=1}^K$ by estimating $\nabla_{\xi_y} \mathcal{L} (\theta, \{\xi_y\}, \{\phi_y\})$ using $\tilde{z}$}
+
+        \ENDFOR
+    \end{algorithmic}
+\end{algorithm}
+
+\section{Implementation}
+
+\subsection{Sanity Check}
+
+\noindent \textbf{WGAN-GP Implementation}: using synthetic $k-mixture$ gaussian in $\mathbb{R}^2$, converges to optimal after about 30k iters (batchsize=100, the dim of noise is $64$)
+
+\noindent \textbf{Synthetic Dataset}: suppose $x|y \sim \mathcal{N}(\upsilon_i, \gamma^2 I)$, where $\upsilon \in \mathbb{R}^d, \gamma = 0.1$
+
+\begin{itemize}
+    \item $d=64$, $h=2$, $n_c=3$, $K=30$, $C=3$, $B_g=B_d=50$: separatable after 5k iters, the visualization could be seen in Figure \ref{syn-epoch50}
+    \begin{itemize}
+        \item \textbf{Adaptive Trick 1}: set a larger $n_c$ for GAN training. The intuition is that the generator is improved every iteration, but the discriminator for class $k$ is updated every $K/C$ iterations (expected), which is not sufficiently trained. Moreover, if $n_c=5$, it is empirically observed that the critic landscape is not good.
+    \end{itemize}
+    \item $d=64$, $h=64$, (or $d=2$, $h=2$): couldn't converge for origin objective (estimated wasserstein distance and gradient penalty keep increasing, thus dominating the loss term), converge when we jointly train $\xi_y$ for $\mathcal{L}_e^{(y)}$
+    \begin{itemize}
+        \item \textbf{Adaptive Trick 2}: use reparameterization trick for $P(z|y)$ and train $\xi_y$ for $\mathcal{L}_e^{(y)}$, then the objective function could be written as
+        $$ \mathcal{L}_{e}^{(y)}(\theta, \xi_y, \phi_y) = \mathbb{E}_{z\sim\mathcal{N}(0, \sigma^2I)}[D_{\phi_y}(z + \xi_y)]-\mathbb{E}_{x|y}[D_{\phi_y}(g_\theta(x))] + \lambda \mathcal{L}_{e, gp}^{(y)}(\phi_y)$$, the intuition is that the initialized $\xi_y$ couldn't match the local geometry of true embedding, therefore it might be hard for generator to optimize.
+    \end{itemize}
+\end{itemize}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.8\textwidth]{syn-epoch50.png}
+\label{syn-epoch50}
+\caption{Generated embedding samples after 5k iterations}
+\end{figure}
+
+\subsection{Current Mini-ImageNet Result}
+
+By using adaptive trick 1 \& 2:
+
+5-way 1-shot: $\approx$42
+
+5-way 5-shot: $\approx$55
+
+Notes
+
+\begin{itemize}
+    \item GP and estimated wasserstein still could not converge (it decreases in first ~ 3000 iters, but flunctuates after that), entropy still decrease, some todo lists about that
+    \begin{itemize}
+        \item only training the discriminative loss
+        \begin{itemize}
+            \item dim=64, 41\% / 54\% (epoch 10, acc = 35\%)
+            \item 
+        \end{itemize}
+        \item only training the embedding matching loss
+        \item apply gaussian t-test to the learned embedding
+        \item initialize $\xi$ with mean of embedding vectors
+        \item anneal the learning rate
+        \item increase the hidden dimension (current: 64)
+    \end{itemize}
+    \item Other drawbacks:
+    \begin{itemize}
+        \item Could not scale with more classes, since number of discriminators and $n_c$ scales with $K$
+        \item Training cost a lot of time (for one iter, it takes about 3.8 s seconds, and updating generator only takes about 1/3 second)
+    \end{itemize}
+\end{itemize}
+
+\end{document}
