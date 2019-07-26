@@ -56,7 +56,7 @@ def generate_params():
         'cls_weight': 1.0,
         'n_decay': n_decay,
         'decay_weight': 0.95,
-        'metric': 'l2'
+        'metric': 'cos'
     }
     
     nlayer = 2

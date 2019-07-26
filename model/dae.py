@@ -108,8 +108,7 @@ def get_dae_graph(params, ph):
         #    qz = graph['query_z'] = dae_encoder_factory(x[ns*n_way:,:], ph, params['encoder'])
         sz = z[:ns*n_way,:]
         qz = z[ns*n_way:,:]
-        graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
-
+        #graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
         # Decoder
         with tf.variable_scope('decoder', reuse=False):
             if params['network']['use_decoder']:
@@ -136,6 +135,12 @@ def get_dae_graph(params, ph):
             else:
                 raise ValueError('Not Implemented Embedding Type')
 
+        if params['network']['metric'] == 'l2':
+            graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
+        else:
+            nanase = tf.reduce_mean(graph['mu'], axis=0, keepdims=True)
+            graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'],
+                                                               'cos', center=nanase)
         # Discriminator
         with tf.variable_scope('disc-embed', reuse=False):
             graph['fake_z_critic'] = dae_disc_factory(graph['fake_z'], graph['one_hot_label'], 
@@ -229,8 +234,9 @@ def get_dae_targets(params, ph, graph, graph_vars):
     gen['acc_loss'] = acc
     gen['g_loss'] += gen['cls_loss'] * params['network']['cls_weight']
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='dae/encoder')
-    print(update_ops)
-    gen['update'] = update_ops
+    #print(update_ops)
+    if len(update_ops) > 0:
+        gen['update'] = update_ops
 
     gen_op = tf.train.AdamOptimizer(params['network']['lr'] * ph['g_lr_decay'])
     gen_grads = gen_op.compute_gradients(loss=gen['g_loss'],

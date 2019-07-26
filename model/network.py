@@ -22,7 +22,7 @@ def four_block_cnn_encoder(x, h_dim, z_dim, is_training, reuse=False):
         print(net.get_shape()[-1])
         return net
 
-def proto_model(support, query, ns, nq, k, label):
+def proto_model(support, query, ns, nq, k, label, metric='l2', center=None):
     # support :  [ns * k, d]
     # query   :  [nq * k, d]
     # label   :  [nq * k, k]
@@ -33,8 +33,11 @@ def proto_model(support, query, ns, nq, k, label):
     sshape = tf.convert_to_tensor([ns, k, z_dim])
 
     proto = tf.reduce_mean(tf.reshape(support, sshape), axis=0)
-
-    logits = -euclidean_distance(query, proto)
+    
+    if metric == 'l2':
+        logits = -euclidean_distance(query, proto)
+    else:
+        logits = cosine_similarity(query - center, proto - center)
 
     entropy = tf.nn.softmax_cross_entropy_with_logits(labels=tf.one_hot(label, k), logits=logits, dim=1)
     entropy = tf.reduce_mean(entropy)

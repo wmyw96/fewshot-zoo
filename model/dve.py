@@ -159,8 +159,12 @@ def get_dve_graph(params, ph):
         
         sz = mu_z[:ns*n_way,:]
         qz = mu_z[ns*n_way:,:]
-        graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
-
+        if params['network']['metric'] == 'l2':
+            graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
+        else:
+            nanase = tf.reduce_mean(graph['mu'], axis=0, keepdims=True)
+            graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'],
+                                                               'cos', center=nanase)
         # Decoder
         with tf.variable_scope('decoder', reuse=False):
             if params['network']['use_decoder']:
