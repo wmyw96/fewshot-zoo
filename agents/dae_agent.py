@@ -2,6 +2,7 @@ from model.dae import *
 from agents.utils import *
 import signal
 import matplotlib.pyplot as plt
+from agents import statistics as stat
 
 
 class GracefulKiller:
@@ -16,7 +17,7 @@ class GracefulKiller:
 
 
 class DAE(object):
-    def __init__(self, params, gpu=-1):
+    def __init__(self, params, logger, gpu=-1):
         self.params = params
 
         # Build computation graph for the DDPG agent
@@ -24,6 +25,7 @@ class DAE(object):
         self.gpu = gpu
         self.epoch = 0
 
+        self.logger = logger
         # Session and saver
         if self.gpu > -1:
             gpu_options = tf.GPUOptions(allow_growth=True)
@@ -90,26 +92,14 @@ class DAE(object):
                 self.killer.kill_now = False
         return False
     
-    def visualize2d(self, path, data_loader, epoch, color):
+    def visualize2d(self, path, data_loader, epoch):
         x, y = data_loader.next_batch(5000)
         plt.figure(figsize=(8, 8))
         embed = self.sess.run(self.graph['mu'])
         fake_z = self.sess.run(self.graph['fake_z'], feed_dict={self.ph['data']:x, self.ph['is_training']: False})
         
-        for i in range(self.nclass):
-            # samples
-            #plt.scatter(real[i, :, 0], real[i, :, 1], c=color[i], s=0.3, marker='*')
-            point = embed[i]
-            plt.scatter(point[0], point[1], c=color[i], s=20.0, marker='x')
-        
-        for i in range(x.shape[0]):
-            plt.scatter(fake_z[i, 0], fake_z[i, 1], c=color[int(y[i])], s=0.3, marker='*')
-
         patho = '{}/epoch{}.png'.format(path, epoch)
-        #plt.xlim(-8, 8)
-        #plt.ylim(-8, 8)
-        plt.savefig(patho)
-        plt.close()
+
     
     def take_step(self):
         self.epoch += 1
@@ -165,6 +155,8 @@ class DAE(object):
         print('Evalllll Acc = {}'.format(np.mean(accs)))'''
     
     def eval(self, epoch, valid, test):
+        log_dict = {}
+
         for idx in range(len(self.params['test']['shot'])):
             shot = self.params['test']['shot'][idx]
             n_way = self.params['test']['n_way'][idx]
@@ -174,4 +166,34 @@ class DAE(object):
                 self.test_perf[idx] = self.single_eval(epoch, test, n_way, shot)
             print('Epoch {}: [{}-way {}-shot] valid perf {}, '
                 'test perf {}'.format(epoch, n_way, shot, cur_value, self.test_perf[idx]))
+
+            cur_log = {'{}-way {}-shot val'.format(n_way, shot): cur_value,
+                       '{}-way {}-shot test'.format(n_way, shot): self.test_perf[idx]}
+            update_loss(log_dict, cur_log, False)
+
+        self.logger.print(epoch, 'val', update_loss)
+
+    def get_statistics(self, epoch, domain, data_loader, batch_size=200):
+        log_dict = {}
+        if domain == 'train':
+            embed = self.sess.run(graph['mu'])
+            update_loss(log_dict, stat.norm(embed))
+            update_loss(log_dict, stat.pairwise_distance(embed))
+
+        inp = []
+        label = []
+        for clsid in range(data_loader.nclass):
+            x = data_loader.sample_from_class(clsid, batch_size)
+            z = self.sess.run(self.graph['fake_z'], feed_dict={self.ph['data']: x, self.ph['is_training']: False})
+            update_loss(log_dict, stat.gaussian_test(z))
+            update_loss(log_dict, stat.correlation(z))
+            inp.append(z)
+            label += [clsid] * batch_size
+
+        inputs = np.concatenate(inp, axis=0)
+        labels = np.array(label)
+        stat.tsne_visualization(inputs, labels, os.path.join(self.logger.dir, 
+            'epoch{}_{}.png'.format(epoch, domain)))
+        self.logger.print(log_dict)
+
 
