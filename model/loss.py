@@ -60,3 +60,11 @@ def euclidean_distance(a, b):
     a = tf.tile(tf.expand_dims(a, axis=1), (1, M, 1))
     b = tf.tile(tf.expand_dims(b, axis=0), (N, 1, 1))
     return tf.reduce_sum(tf.square(a - b), axis=2)
+
+def cosine_similarity(x, y):
+    x_norm = tf.nn.l2_normalize(x, axis=-1)
+    y_norm = tf.nn.l2_normalize(y, axis=-1)
+    y_norm_trans = tf.transpose(y_norm, [1, 0])
+    sim = tf.matmul(x_norm, y_norm_trans)
+    return sim
+

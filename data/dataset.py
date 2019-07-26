@@ -12,5 +12,7 @@ def load_dataset(params):
                                          params['data']['stddev'])
     elif params['data']['dataset'] == 'mini-imagenet':
         return load_mini_imagenet(params)
+    elif params['data']['dataset'] == 'embed-mini-imagenet':
+        return load_embed_mini_imagenet(params)
     else:
         raise ValueError('Dataset doesn\'t exist !!')
