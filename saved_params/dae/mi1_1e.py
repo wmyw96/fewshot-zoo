@@ -45,7 +45,8 @@ def generate_params():
         'rec_weight': 0.0,
         'cls_weight': 1.0,
         'n_decay': 30,
-        'weight_decay': 1.0
+        'weight_decay': 1.0,
+        'metric': 'l2'
     }
 
     encoder = {

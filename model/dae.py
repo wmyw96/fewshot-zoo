@@ -233,6 +233,12 @@ def get_dae_targets(params, ph, graph, graph_vars):
     gen['cls_loss'] = tf.reduce_mean(log_yz)
     gen['acc_loss'] = acc
     gen['g_loss'] += gen['cls_loss'] * params['network']['cls_weight']
+
+    # penalize the norm of the embedding    
+    if 'l2' in params['embedding']:
+        gen['embed_l2_loss'] = tf.reduce_mean(tf.square(graph['mu']))
+        gen['g_loss'] += params['embedding']['l2'] * gen['embed_l2_loss']
+
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='dae/encoder')
     #print(update_ops)
     if len(update_ops) > 0:

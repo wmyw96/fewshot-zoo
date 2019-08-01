@@ -119,13 +119,16 @@ def get_dve_graph(params, ph):
     graph = {}
     if params['data']['dataset'] == 'mini-imagenet':
         rx = ph['data']            # [b, *x.shape]
-        with tf.variable_scope('pretrain'):
+        #with tf.variable_scope('pretrain'):
             #graph['x'], graph['pt_logits'] = regularized_pretrain_network(rx, ph)
-            x = dve_pretrain_encoder_factory(rx, ph)
-            graph['x'] = tf.layers.batch_normalization(x, training=ph['is_training'])
-            fc = tf.layers.dense(graph['x'], 1024, activation=tf.nn.relu)
-            graph['pt_logits'] = tf.layers.dense(fc, params['data']['nclass'], activation=None)
+        #    x = dve_pretrain_encoder_factory(rx, ph)
+        #    graph['x'] = tf.layers.batch_normalization(x, training=ph['is_training'])
+        #    fc = tf.layers.dense(graph['x'], 1024, activation=tf.nn.relu)
+        #    graph['pt_logits'] = tf.layers.dense(fc, params['data']['nclass'], activation=None)
+        with tf.variable_scope('pretrain'):
+            graph['pt_logits'], graph['x'] = regularized_pretrain_network(rx, ph)
         x = graph['x']
+        
     else:
         x = graph['x'] = ph['data']
     

@@ -1,11 +1,14 @@
 
 
-color_set = ['black', 'dimgray', 'grey', 'rosybrown', 'lightcoral', 'brown', 'firebrick', 'maroon', 'red',
-         'salmon', 'tomato', 'orangered', 'sienna', 'chocolate', 'saddlebrown', 'peru', 'orange', 'tan',
-         'wheat', 'gold', 'khaki', 'darkkhaki', 'olive', 'y', 'yellow', 'greenyellow', 'lawngreen',
-         'palegreen', 'green', 'lime', 'seagreen', 'springgreen', 'aquamarine', 'turquoise', 'lightseagreen',
-         'teal', 'c', 'cyan', 'deepskyblue', 'skyblue', 'dodgerblue', 'steelblue', 'slategray', 'navy', 'darkblue',
-         'blue', 'slateblue', 'darkorchid', 'plum', 'violet', 'fuchsia', 'lightpink', 'crimson', 'indigo', 
-         'moccasin', 'palevioletred', 'royalblue', 'darkslateblue', 'lemonchiffon', 'darkslategrey', 'purple', 'magenta',
+
+color_set = ['black', 'skyblue', 'violet', 'green', 'purple', 'gold', 'olive', 'grey', 'moccasin','rosybrown', 'navy', 'lightcoral', 'yellow',
+         'salmon', 'red', 'springgreen', 'magenta', 'lime', 'orange', 'cyan', 'tan','brown', 'firebrick', 'maroon',
+         'tomato', 'orangered', 'sienna', 'chocolate', 'saddlebrown', 'peru', 
+         'wheat', 'khaki', 'darkkhaki', 'y',  'greenyellow', 'lawngreen',
+         'palegreen', 'seagreen', 'aquamarine', 'turquoise', 'lightseagreen',
+         'teal', 'c', 'deepskyblue',  'dodgerblue', 'steelblue', 'slategray', 'darkblue',
+         'blue', 'slateblue', 'darkorchid', 'plum', 'fuchsia', 'lightpink','dimgray',  'crimson', 'indigo', 
+          'palevioletred', 'royalblue', 'darkslateblue', 'lemonchiffon', 'darkslategrey', 
          'mediumseagreen', 'navajowhite']
+
 

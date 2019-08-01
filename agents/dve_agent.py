@@ -2,7 +2,9 @@ from model.dve import *
 from agents.utils import *
 import signal
 import matplotlib.pyplot as plt
+import agents.statistics as stat
 import os
+from tqdm import tqdm
 
 
 class GracefulKiller:
@@ -17,13 +19,14 @@ class GracefulKiller:
 
 
 class DVE(object):
-    def __init__(self, params, gpu=-1):
+    def __init__(self, params, logger, gpu=-1):
         self.params = params
 
         # Build computation graph for the DDPG agent
         self.ph, self.graph, self.targets, self.save_vars, self.pretrain_vars = build_dve_model(params)
         self.gpu = gpu
         self.epoch = 0
+        self.logger = logger
 
         # Session and saver
         if self.gpu > -1:
@@ -130,6 +133,7 @@ class DVE(object):
  
     def print_log(self, epoch):
         print_log('DVE Training: ', epoch, self.losses)
+        self.logger.print(epoch, 'training', self.losses)
         self.losses = {}
 
     def single_eval(self, epoch, data_loader, n_way, shot):
@@ -154,6 +158,7 @@ class DVE(object):
         return np.mean(accs)
     
     def eval(self, epoch, valid, test):
+        log_dict = {}
         for idx in range(len(self.params['test']['shot'])):
             shot = self.params['test']['shot'][idx]
             n_way = self.params['test']['n_way'][idx]
@@ -163,4 +168,45 @@ class DVE(object):
                 self.test_perf[idx] = self.single_eval(epoch, test, n_way, shot)
             print('Epoch {}: [{}-way {}-shot] valid perf {}, '
                 'test perf {}'.format(epoch, n_way, shot, cur_value, self.test_perf[idx]))
+
+            cur_log = {'{}-way {}-shot val'.format(n_way, shot): cur_value,
+                       '{}-way {}-shot test'.format(n_way, shot): self.test_perf[idx]}
+            update_loss(cur_log, log_dict, False)
+            print(log_dict)
+
+        self.logger.print(epoch, 'val', log_dict)
+
+    def get_statistics(self, epoch, domain, data_loader, col, batch_size=600):
+        log_dict, embed = {}, None
+        if domain == 'train':
+            embed = self.sess.run(self.graph['mu'])
+            update_loss(stat.norm(embed, 'mu_'), log_dict, False)
+            update_loss(stat.pairwise_distance(embed, 'mu_'), log_dict, False)
+
+        inp = []
+        label = []
+        embed2 = []
+        for clsid in tqdm(range(data_loader.nclass), desc='Get Statistics {}'.format(domain)):
+            x = data_loader.sample_from_class(clsid, batch_size)
+            z = self.sess.run(self.graph['mu_z'], feed_dict={self.ph['data']: x, self.ph['is_training']: False})
+            update_loss(stat.gaussian_test(z), log_dict, False)
+            update_loss(stat.correlation(z), log_dict, False)
+
+            nanasa = np.mean(z, 0, keepdims=True)
+            embed2.append(nanasa)
+            update_loss(stat.norm(z, 'inclass_'), log_dict, False)
+            update_loss(stat.pairwise_distance(z, 'inclass_'), log_dict, False)
+            inp.append(z[:50, ])
+            label += [clsid] * 50
+        embed2 = np.concatenate(embed2, 0)
+        if embed is not None:
+            update_loss({'mean_div': np.sum(np.square(embed - embed2)) / embed.shape[0]}, log_dict, False)
+        update_loss(stat.norm(embed2, 'est_'), log_dict, False)
+        update_loss(stat.pairwise_distance(embed2, 'est_'), log_dict, False)
+
+        inputs = np.concatenate(inp, axis=0)
+        labels = np.array(label)
+        stat.tsne_visualization(inputs, labels, os.path.join(self.logger.dir,
+            'epoch{}_{}.png'.format(epoch, domain)), col)
+        self.logger.print(epoch, domain + '-stat', log_dict)
 

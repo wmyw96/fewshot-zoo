@@ -3,6 +3,7 @@ from agents.utils import *
 import signal
 import matplotlib.pyplot as plt
 from agents import statistics as stat
+from tqdm import tqdm
 
 
 class GracefulKiller:
@@ -115,6 +116,7 @@ class DAE(object):
         
     def print_log(self, epoch):
         print_log('DAE Training: ', epoch, self.losses)
+        self.logger.print(epoch, 'training', self.losses)
         self.losses = {}
 
     def single_eval(self, epoch, data_loader, n_way, shot):
@@ -169,31 +171,43 @@ class DAE(object):
 
             cur_log = {'{}-way {}-shot val'.format(n_way, shot): cur_value,
                        '{}-way {}-shot test'.format(n_way, shot): self.test_perf[idx]}
-            update_loss(log_dict, cur_log, False)
+            update_loss(cur_log, log_dict, False)
+            print(log_dict)
 
-        self.logger.print(epoch, 'val', update_loss)
+        self.logger.print(epoch, 'val', log_dict)
 
-    def get_statistics(self, epoch, domain, data_loader, batch_size=200):
-        log_dict = {}
+    def get_statistics(self, epoch, domain, data_loader, col, batch_size=600):
+        log_dict, embed = {}, None
         if domain == 'train':
-            embed = self.sess.run(graph['mu'])
-            update_loss(log_dict, stat.norm(embed))
-            update_loss(log_dict, stat.pairwise_distance(embed))
+            embed = self.sess.run(self.graph['mu'])
+            update_loss(stat.norm(embed, 'mu_'), log_dict, False)
+            update_loss(stat.pairwise_distance(embed, 'mu_'), log_dict, False)
 
         inp = []
         label = []
-        for clsid in range(data_loader.nclass):
+        embed2 = []
+        for clsid in tqdm(range(data_loader.nclass), desc='Get Statistics {}'.format(domain)):
             x = data_loader.sample_from_class(clsid, batch_size)
             z = self.sess.run(self.graph['fake_z'], feed_dict={self.ph['data']: x, self.ph['is_training']: False})
-            update_loss(log_dict, stat.gaussian_test(z))
-            update_loss(log_dict, stat.correlation(z))
-            inp.append(z)
-            label += [clsid] * batch_size
+            update_loss(stat.gaussian_test(z), log_dict, False)
+            update_loss(stat.correlation(z), log_dict, False)
+            
+            nanasa = np.mean(z, 0, keepdims=True)
+            embed2.append(nanasa)
+            update_loss(stat.norm(z, 'inclass_'), log_dict, False)
+            update_loss(stat.pairwise_distance(z, 'inclass_'), log_dict, False)
+            inp.append(z[:50, ])
+            label += [clsid] * 50
+        embed2 = np.concatenate(embed2, 0)
+        if embed is not None:
+            update_loss({'mean_div': np.sum(np.square(embed - embed2)) / embed.shape[0]}, log_dict, False)
+        update_loss(stat.norm(embed2, 'est_'), log_dict, False)
+        update_loss(stat.pairwise_distance(embed2, 'est_'), log_dict, False)
 
         inputs = np.concatenate(inp, axis=0)
         labels = np.array(label)
         stat.tsne_visualization(inputs, labels, os.path.join(self.logger.dir, 
-            'epoch{}_{}.png'.format(epoch, domain)))
-        self.logger.print(log_dict)
+            'epoch{}_{}.png'.format(epoch, domain)), col)
+        self.logger.print(epoch, domain + '-stat', log_dict)
 
 

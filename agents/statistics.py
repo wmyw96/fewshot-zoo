@@ -1,33 +1,35 @@
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
+from sklearn import manifold
 
-def norm(embed):
+
+def norm(embed, prefix=''):
     '''
        embed: [n, d]
     '''
     nanasa = np.mean(embed, 0, keepdims=True)
-    norm = np.sqrt(np.sum(tf.square(embed), 1))
+    norm = np.sqrt(np.sum(np.square(embed), 1))
     centered_norm = np.sqrt(np.sum(np.square(embed - nanasa), 1))
     return {
-        'norm_mean': np.mean(norm),
-        'norm_std': np.std(norm),
-        'norm_max': np.max(norm),
-        'cnorm_mean': np.mean(centered_norm),
-        'cnorm_std': np.std(centered_norm),
-        'cnorm_max': np.max(centered_norm),
+        prefix+'norm_mean': np.mean(norm),
+        prefix+'norm_std': np.std(norm),
+        prefix+'norm_max': np.max(norm),
+        prefix+'cnorm_mean': np.mean(centered_norm),
+        prefix+'cnorm_std': np.std(centered_norm),
+        prefix+'cnorm_max': np.max(centered_norm),
     }
 
-def pairwise_distance(embed):
+def pairwise_distance(embed, prefix=''):
     '''
         embed: [n, d]
     '''
     x = np.expand_dims(embed, 1)
     y = np.expand_dims(embed, 0)
-    dist = np.sqrt(tf.sum(np.square(x - y), 2))   # [n, n]
+    dist = np.sqrt(np.sum(np.square(x - y), 2))   # [n, n]
     return {
-        'dist_mean': np.mean(dist),
-        'dist_std': np.mean(dist)
+        prefix+'dist_mean': np.mean(dist),
+        prefix+'dist_std': np.std(dist)
     }
 
 def gaussian_test(x):
@@ -54,9 +56,9 @@ def correlation(x):
     x_ = x.transpose()
     cor = np.cov(x_)
     norm = cor.diagonal()
-    cor = cor / np.sqrt(np.expand_dims(norm, 0) * np.expand_dims(norm, 1))
+    cor = cor / np.sqrt(1e-9 + np.expand_dims(norm, 0) * np.expand_dims(norm, 1))
     return {
-        'cor_mean': np.mean(cor - cor.diagonal()),
+        'cor_mean': np.mean(cor - np.diag(cor.diagonal())),
     }
 
 
@@ -83,18 +85,19 @@ def test_gaussian_test():
     assert p_2['pvalue_mean'] < 0.05
 
 
-def tsne_visualization(x, y, path):
+def tsne_visualization(x, y, path, color_set):
     tsne = manifold.TSNE(n_components=2, init='pca', random_state=501)
-    x_tsne = tsne.fit_transform(X)
+    x_tsne = tsne.fit_transform(x)
     x_min, x_max = x_tsne.min(0), x_tsne.max(0)
     x_norm = (x_tsne - x_min) / (x_max - x_min)
     plt.figure(figsize=(16, 16))
     for i in range(x_norm.shape[0]):
-        plt.text(x_norm[i, 0], X_norm[i, 1], str(y[i]), color=plt.cm.Set1(y[i]), 
-                 fontdict={'weight': 'bold', 'size': 5})
+        plt.text(x_norm[i, 0], x_norm[i, 1], str(y[i]), color=color_set[int(y[i])], 
+                 fontdict={'weight': 'bold', 'size': 7})
     plt.xticks([])
     plt.yticks([])
     plt.savefig(path)
+    plt.close()
 
 if __name__ == '__main__':
     test_correlation()

@@ -6,6 +6,7 @@ def generate_params():
         'split_dir': './splits/mini-imagenet',
         'x_size': [84, 84, 3],
         'nclass': 64,
+        'rot': False,
         'split': ['train', 'valid', 'test'],
     }
 

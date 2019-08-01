@@ -22,9 +22,9 @@ class classfication_dataset(object):
         # class-based index
         self.cb_index = []
         for i in range(self.nclass):
-            ind = np.argwhere(labels == i).reshape(-1)
+            ind = np.argwhere(self.labels.squeeze() == i).reshape(-1)
             self.cb_index.append(ind)
-            print('class {}: {} - {}'.format(i, np.min(ind), np.max(ind)))
+            print('class {}: {} - {}, count = {}'.format(i, np.min(ind), np.max(ind), len(ind)))
             #print(self.labels[self.cb_index[i]])
 
         self.randomize = randomize
@@ -42,13 +42,26 @@ class classfication_dataset(object):
             np.random.shuffle(idx)
             self.inputs = self.inputs[idx, :]
             self.labels = self.labels[idx, :]
-        
+            
+            #print(self.labels.shape)        
             self.cb_index = []
             for i in range(self.nclass):
-                ind = np.argwhere(self.labels == i).reshape(-1)
+                ind = np.argwhere(self.labels.squeeze() == i).reshape(-1)
+                #print(len(ind))
                 self.cb_index.append(ind)
+            #self.check_index()
                 #print('class {}: {} - {}'.format(i, np.min(ind), np.max(ind)))
             #print(self.labels[self.cb_index[i]])
+
+    def check_index(self):
+        print('Start Self Check Indexing ...')
+        for i in range(self.nclass):
+            num_items = len(self.cb_index[i])
+            ind = np.arange(num_items)
+            print(num_items)
+            print(self.labels[self.cb_index[i][ind]] == i)
+            assert np.sum(self.labels[self.cb_index[i][ind]] == i) == num_items
+        print('End of Self Check Indexing...')
 
     def next_batch(self, batch_size):
         # if batch_size is negative -> return all
@@ -97,5 +110,7 @@ class classfication_dataset(object):
 
     def sample_from_class(self, clsid, batch_size):
         ind = np.random.permutation(self.cb_index[clsid].shape[0])[:batch_size]
-        return self.inputs[self.cb_index[cid][ind], :]
+        #print(self.labels[self.cb_index[clsid][ind], :] == clsid)
+        assert np.sum(self.labels[self.cb_index[clsid][ind], :] == clsid) == batch_size
+        return self.inputs[self.cb_index[clsid][ind], :]
     

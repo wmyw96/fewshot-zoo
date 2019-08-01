@@ -1,4 +1,5 @@
 import numpy as np
+import datetime
 import tensorflow as tf
 import json, sys, os
 from os import path
@@ -21,7 +22,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Parse cmdline args
 parser = argparse.ArgumentParser(description='Few-Shot-Learning')
-parser.add_argument('--logdir', default='../data/fewshot-zoo-logs/', type=str)
+parser.add_argument('--logdir', default='../../data/fewshot-zoo-logs/', type=str)
 
 parser.add_argument('--seed', default=0, type=int)
 parser.add_argument('--exp_id', default='dae.exp_syn1', type=str)
@@ -56,15 +57,15 @@ tf.set_random_seed(args.seed)
 
 log_dir = os.path.join(args.logdir, args.exp_id + datetime.datetime.now().strftime('%m_%d_%H_%M'))
 print('Experiment Logs will be written at {}'.format(log_dir))
-logger = LogWriter(logdir, 'main.log')
+logger = LogWriter(log_dir, 'main.log')
 
 # fetch model
 if args.model == 'dae':
     agent = DAE(params, logger, args.gpu)
 elif args.model == 'protonet':
-    agent = SupportQueryAgent(params, args.gpu)
+    agent = SupportQueryAgent(params, logger, args.gpu)
 elif args.model == 'dve':
-    agent = DVE(params, args.gpu)
+    agent = DVE(params, logger, args.gpu)
 else:
     raise NotImplementedError
 
@@ -93,6 +94,11 @@ if args.type == 'train':
             if epoch % params['train']['valid_interval'] == 0:
                 #agent.evallll(valid)
                 agent.eval(epoch, valid, test)
+        if args.stat:
+            agent.get_statistics(epoch, 'train', train, color_set)
+            agent.get_statistics(epoch, 'val', valid, color_set)
+            agent.get_statistics(epoch, 'test', test, color_set)
+
         for iters in tqdm(range(params['train']['iter_per_epoch'])):
             done = agent.train_iter(train)
             if done:
@@ -100,10 +106,10 @@ if args.type == 'train':
         agent.print_log(epoch)
         #agent.visualize2d('logs/syn2d', train, epoch, color_set)
         agent.take_step()
-        if args.stat:
-            agent.get_statistics(epoch, 'train', train)
-            agent.get_statistics(epoch, 'train', train)
-            agent.get_statistics(epoch, 'train', train)
+        #if args.stat:
+        #    agent.get_statistics(epoch, 'train', train)
+        #    agent.get_statistics(epoch, 'val', valid)
+        #    agent.get_statistics(epoch, 'test', test)
 
         if done:
             break

@@ -5,6 +5,8 @@ import os
 def update_loss(fetch, loss, need_loss=True):
     for key in fetch:
         if ('loss' in key) or (not need_loss):
+            #if not need_loss:
+            #    print(key)
             if key not in loss:
                 loss[key] = []
             #print(fetch[key])
@@ -27,7 +29,7 @@ def print_log(title, epoch, loss):
 
 
 class LogWriter(object):
-    def __init__(self, name, dir):
+    def __init__(self, dir, name):
         self.dir = dir
         if os.path.exists(self.dir):
             pass
@@ -39,14 +41,14 @@ class LogWriter(object):
         f.truncate()
         f.close()
 
-    def print(self, readouts, domain):
-        spacing = 10
+    def print(self, epoch, domain, loss):
+        spacing = 20
         print_str = 'Epoch {}   ({})\n'.format(epoch, domain)
 
         for i, (k_, v_) in enumerate(loss.items()):
-            if 'loss' in k_:
+            if True:
                 value = np.around(np.mean(v_, axis=0), decimals=6)
                 print_str += (k_ + ': ').rjust(spacing) + str(value) + '\n'
-
+        print_str += '\n'
         with open(self.file_path, 'a') as f:
             f.write(print_str)
