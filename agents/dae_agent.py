@@ -179,9 +179,9 @@ class DAE(object):
     def get_statistics(self, epoch, domain, data_loader, col, batch_size=600):
         log_dict, embed = {}, None
         if domain == 'train':
-            embed = self.sess.run(self.graph['mu'])
-            update_loss(stat.norm(embed, 'mu_'), log_dict, False)
-            update_loss(stat.pairwise_distance(embed, 'mu_'), log_dict, False)
+            embed = self.sess.run(self.graph['embed'])
+            update_loss(stat.norm(embed, 'embed_'), log_dict, False)
+            update_loss(stat.pairwise_distance(embed, 'embed_'), log_dict, False)
 
         inp = []
         label = []
@@ -194,8 +194,8 @@ class DAE(object):
             
             nanasa = np.mean(z, 0, keepdims=True)
             embed2.append(nanasa)
-            update_loss(stat.norm(z, 'inclass_'), log_dict, False)
-            update_loss(stat.pairwise_distance(z, 'inclass_'), log_dict, False)
+            update_loss(stat.norm(z[:100], 'inclass_'), log_dict, False)
+            update_loss(stat.pairwise_distance(z[:100], 'inclass_'), log_dict, False)
             inp.append(z[:50, ])
             label += [clsid] * 50
         embed2 = np.concatenate(embed2, 0)

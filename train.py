@@ -94,10 +94,10 @@ if args.type == 'train':
             if epoch % params['train']['valid_interval'] == 0:
                 #agent.evallll(valid)
                 agent.eval(epoch, valid, test)
-        if args.stat:
-            agent.get_statistics(epoch, 'train', train, color_set)
-            agent.get_statistics(epoch, 'val', valid, color_set)
-            agent.get_statistics(epoch, 'test', test, color_set)
+        #if args.stat:
+        #    agent.get_statistics(epoch, 'train', train, color_set)
+        #    agent.get_statistics(epoch, 'val', valid, color_set)
+        #    agent.get_statistics(epoch, 'test', test, color_set)
 
         for iters in tqdm(range(params['train']['iter_per_epoch'])):
             done = agent.train_iter(train)
@@ -106,10 +106,10 @@ if args.type == 'train':
         agent.print_log(epoch)
         #agent.visualize2d('logs/syn2d', train, epoch, color_set)
         agent.take_step()
-        #if args.stat:
-        #    agent.get_statistics(epoch, 'train', train)
-        #    agent.get_statistics(epoch, 'val', valid)
-        #    agent.get_statistics(epoch, 'test', test)
+        if args.stat:
+            agent.get_statistics(epoch, 'train', train, color_set)
+            agent.get_statistics(epoch, 'val', valid, color_set)
+            agent.get_statistics(epoch, 'test', test, color_set)
 
         if done:
             break

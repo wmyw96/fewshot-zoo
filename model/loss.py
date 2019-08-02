@@ -1,5 +1,10 @@
 import tensorflow as tf
 
+
+def normalize(x, dim=1):
+    return x / tf.sqrt(tf.reduce_sum(x * x, axis=dim, keepdims=True))
+
+
 def disc_gan_loss(real, fake):
     loss_real = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.ones_like(real),
@@ -68,3 +73,7 @@ def cosine_similarity(x, y):
     sim = tf.matmul(x_norm, y_norm_trans)
     return sim
 
+def inner_product(x, y):
+    y_trans = tf.transpose(y, [1, 0])
+    sim = tf.matmul(x, y_trans)
+    return sim

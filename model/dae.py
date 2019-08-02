@@ -106,8 +106,8 @@ def get_dae_graph(params, ph):
         #    sz = graph['support_z'] = dae_encoder_factory(x[:ns*n_way,:], ph, params['encoder'])
         #with tf.variable_scope('encoder', reuse=True):
         #    qz = graph['query_z'] = dae_encoder_factory(x[ns*n_way:,:], ph, params['encoder'])
-        sz = z[:ns*n_way,:]
-        qz = z[ns*n_way:,:]
+        #sz = z[:ns*n_way,:]
+        #qz = z[ns*n_way:,:]
         #graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
         # Decoder
         with tf.variable_scope('decoder', reuse=False):
@@ -134,6 +134,15 @@ def get_dae_graph(params, ph):
                 graph['real_z'] = real_z
             else:
                 raise ValueError('Not Implemented Embedding Type')
+
+        graph['embed'] = graph['mu']
+        if 'vmf' in params['network']:
+            graph['fake_z'] = normalize(graph['fake_z'])
+            graph['real_z'] = normalize(graph['real_z'])
+            graph['embed'] = normalize(graph['mu'])
+        
+        sz = graph['fake_z'][:ns*n_way,:]
+        qz = graph['fake_z'][ns*n_way:,:]
 
         if params['network']['metric'] == 'l2':
             graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
@@ -224,8 +233,11 @@ def get_dae_targets(params, ph, graph, graph_vars):
     # classfication loss
     log_p_y_prior = tf.log(tf.expand_dims(ph['p_y_prior'], 0))      # [1, K]
     dist = euclidean_distance(graph['fake_z'], graph['mu'])         # [b, K]
-
+    
     logits = -dist + log_p_y_prior
+    
+    if 'vmf' in params['network']:
+        logits = inner_product(graph['fake_z'], normalize(graph['mu'])) + log_p_y_prior
 
     log_yz = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], logits=logits, dim=1) # [b]
     acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits, 1), ph['label']), tf.float32))   # [1,]
