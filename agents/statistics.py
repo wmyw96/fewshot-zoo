@@ -20,6 +20,17 @@ def norm(embed, prefix=''):
         prefix+'cnorm_max': np.max(centered_norm),
     }
 
+
+def l2_distance(embed, prefix=''):
+    '''
+        embed: [n, d]
+    '''
+    x = np.expand_dims(embed, 1)
+    y = np.expand_dims(embed, 0)
+    dist = np.sqrt(np.sum(np.square(x - y), 2))   # [n, n]
+    return dist
+
+
 def pairwise_distance(embed, prefix=''):
     '''
         embed: [n, d]
@@ -32,7 +43,7 @@ def pairwise_distance(embed, prefix=''):
         prefix+'dist_std': np.std(dist)
     }
 
-def gaussian_test(x):
+def gaussian_test(x, prefix=''):
     '''
         x: [n, d]
     '''
@@ -43,9 +54,9 @@ def gaussian_test(x):
         p_values.append(p_value)
         cnt_5 += p_value < 0.05
     return {
-        'pvalue_mean': np.mean(p_values),
-        'pvalue_std': np.std(p_values),
-        'sign': (cnt_5 + 0.0) / x.shape[1]
+        prefix + 'pvalue_mean': np.mean(p_values),
+        prefix + 'pvalue_std': np.std(p_values),
+        prefix + 'sign': (cnt_5 + 0.0) / x.shape[1]
     }
 
 
@@ -84,6 +95,16 @@ def test_gaussian_test():
     print(p_2)
     assert p_2['pvalue_mean'] < 0.05
 
+
+def davies_bouldin_index(s, m):
+    n = s.shape[0]
+    si = np.expand_dims(s, 1)
+    sj = np.expand_dims(s, 0)
+    r = (si + sj) / (np.maximum(m, 1e-9))
+    mask = np.ones((n, n)) - np.eye(n)
+    d = np.max(r * mask, 1)
+    return {'davies_bouldin': np.mean(d)}
+ 
 
 def tsne_visualization(x, y, path, color_set):
     tsne = manifold.TSNE(n_components=2, init='pca', random_state=501)

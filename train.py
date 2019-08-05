@@ -87,7 +87,7 @@ if args.type == 'train':
     if args.pretrain_dir is not None:
         agent.start(args.pretrain_dir, train)
     else:
-        agent.start()
+        agent.start(train)
     done = False
     for epoch in range(params['train']['num_epoches']):
         if params['train']['valid_interval'] is not None:
@@ -107,9 +107,9 @@ if args.type == 'train':
         #agent.visualize2d('logs/syn2d', train, epoch, color_set)
         agent.take_step()
         #if args.stat:
-        #    agent.get_statistics(epoch, 'train', train)
-        #    agent.get_statistics(epoch, 'val', valid)
-        #    agent.get_statistics(epoch, 'test', test)
+        #    agent.get_statistics(epoch, 'train', train, color_set)
+        #    agent.get_statistics(epoch, 'val', valid, color_set)
+        #    agent.get_statistics(epoch, 'test', test, color_set)
 
         if done:
             break

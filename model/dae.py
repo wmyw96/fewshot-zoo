@@ -32,7 +32,7 @@ def dae_disc_factory(inp, label, ph, params, return_inp=False):
         #if return_inp:
         out = feedforward(inp_concat, ph['is_training'], params, 'fc')
         if return_inp:
-            return out, inp_concat
+            return out, inp
         else:
             return out
     else:
@@ -76,6 +76,8 @@ def get_dae_ph(params):
     ph['eval_label'] = tf.placeholder(dtype=tf.int64,
                                 shape=[None, None],
                                 name='label')
+    ph['stdw'] = tf.placeholder(dtype=tf.float32, shape=[], name='stdw')
+    ph['cd_embed'] = tf.placeholder(dtype=tf.float32, shape=[params['data']['nclass'], params['network']['z_dim']], name='cd_embed')
 
     return ph
 
@@ -91,7 +93,7 @@ def get_dae_graph(params, ph):
         # Fake Samples
         with tf.variable_scope('encoder', reuse=False):
             z = dae_encoder_factory(x, ph, params['encoder'], False)
-            graph['fake_z'] = z
+            graph['z'] = z
 
         # For evaluation
         #ns = tf.shape(ph['support'])[0]
@@ -106,15 +108,15 @@ def get_dae_graph(params, ph):
         #    sz = graph['support_z'] = dae_encoder_factory(x[:ns*n_way,:], ph, params['encoder'])
         #with tf.variable_scope('encoder', reuse=True):
         #    qz = graph['query_z'] = dae_encoder_factory(x[ns*n_way:,:], ph, params['encoder'])
-        sz = z[:ns*n_way,:]
-        qz = z[ns*n_way:,:]
+        #sz = z[:ns*n_way,:]
+        #qz = z[ns*n_way:,:]
         #graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
         # Decoder
         with tf.variable_scope('decoder', reuse=False):
             if params['network']['use_decoder']:
                 x_rec = dae_decoder_factory(z, ph, params['decoder'])
                 graph['x_rec'] = x_rec
-
+        
         # Embedding
         # Real Samples
         with tf.variable_scope('embedding', reuse=False):
@@ -126,14 +128,22 @@ def get_dae_graph(params, ph):
                 graph['mu'] = \
                     tf.get_variable('mu', [nclass, z_dim],
                                     initializer=tf.random_normal_initializer)
-
+                stddev *= ph['stdw']
                 real_z_mean = tf.gather(graph['mu'], ph['label'], axis=0)
                 noise = tf.random_normal([batch_size, z_dim], 0.0, stddev, 
                                          seed=params['train']['seed'])
                 real_z = real_z_mean + noise
                 graph['real_z'] = real_z
-            else:
-                raise ValueError('Not Implemented Embedding Type')
+                graph['fake_z'] = z
+                
+        graph['embed'] = graph['mu']
+        if 'vmf' in params['network']:
+            graph['fake_z'] = normalize(graph['fake_z'])
+            graph['real_z'] = normalize(graph['real_z'])
+            graph['embed'] = normalize(graph['mu'])
+        
+        sz = graph['z'][:ns*n_way,:]
+        qz = graph['z'][ns*n_way:,:]
 
         if params['network']['metric'] == 'l2':
             graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
@@ -220,12 +230,16 @@ def get_dae_targets(params, ph, graph, graph_vars):
     if params['network']['use_decoder']:
         gen['rec_loss'] = tf.reduce_mean(tf.abs(ph['data'] - graph['x_rec']))
         gen['g_loss'] += gen['rec_loss'] * params['network']['rec_weight']
-
+    
+    stddev = params['embedding']['stddev'] * ph['stdw']
     # classfication loss
     log_p_y_prior = tf.log(tf.expand_dims(ph['p_y_prior'], 0))      # [1, K]
-    dist = euclidean_distance(graph['fake_z'], graph['mu'])         # [b, K]
-
+    dist = euclidean_distance(graph['z'], graph['mu'], scale=1.0/stddev/stddev)         # [b, K]
+    
     logits = -dist + log_p_y_prior
+    
+    if 'vmf' in params['network']:
+        logits = inner_product(graph['z'], normalize(graph['mu'])) + log_p_y_prior
 
     log_yz = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], logits=logits, dim=1) # [b]
     acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits, 1), ph['label']), tf.float32))   # [1,]
@@ -267,6 +281,9 @@ def get_dae_targets(params, ph, graph, graph_vars):
         'eval': {
             'acc': graph['eval_acc'],
             '64-acc': acc
+        },
+        'assign_embed': {
+            'assign': tf.assign(graph['mu'], ph['cd_embed'])
         }
     }
 

@@ -1,5 +1,10 @@
 import tensorflow as tf
 
+
+def normalize(x, dim=1):
+    return x / tf.sqrt(tf.reduce_sum(x * x, axis=dim, keepdims=True))
+
+
 def disc_gan_loss(real, fake):
     loss_real = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.ones_like(real),
@@ -52,14 +57,14 @@ def wgan_gp_wdist(real_critic, fake_critic):
     return w_dist
 
 
-def euclidean_distance(a, b):
+def euclidean_distance(a, b, scale=1.0):
     # a.shape = N x D
     # b.shape = M x D
     N, D = tf.shape(a)[0], tf.shape(a)[1]
     M = tf.shape(b)[0]
     a = tf.tile(tf.expand_dims(a, axis=1), (1, M, 1))
     b = tf.tile(tf.expand_dims(b, axis=0), (N, 1, 1))
-    return tf.reduce_sum(tf.square(a - b), axis=2)
+    return tf.reduce_sum(tf.square(a - b), axis=2) * scale
 
 def cosine_similarity(x, y):
     x_norm = tf.nn.l2_normalize(x, axis=-1)
@@ -68,3 +73,7 @@ def cosine_similarity(x, y):
     sim = tf.matmul(x_norm, y_norm_trans)
     return sim
 
+def inner_product(x, y):
+    y_trans = tf.transpose(y, [1, 0])
+    sim = tf.matmul(x, y_trans)
+    return sim

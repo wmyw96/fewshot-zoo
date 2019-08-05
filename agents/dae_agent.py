@@ -35,6 +35,7 @@ class DAE(object):
             self.sess = tf.Session()
         self.step = 0
 
+        self.stdw = 1.0
         self.g_decay = 1.0
         self.d_decay = 1.0
         self.e_decay = 1.0
@@ -46,8 +47,21 @@ class DAE(object):
         self.save_model = tf.train.Saver(var_list=self.save_vars)
         self.killer = GracefulKiller()
 
-    def start(self):
+    def start(self, data_loader=None):
         self.sess.run(tf.global_variables_initializer())
+        if False:
+            batch_size = 400
+            embed = [ [] for i in range(self.nclass) ]
+            for it in range(1000):
+                inputs, labels = data_loader.next_batch(batch_size)
+                z = self.sess.run(self.graph['z'], feed_dict={self.ph['data']: inputs,
+                                                                   self.ph['is_training']: False})
+                for i in range(labels.shape[0]):
+                    embed[int(labels[i])].append(np.expand_dims(z[i, :], 0))
+            for clsid in range(self.nclass):
+                embed[clsid] = np.mean(np.concatenate(embed[clsid], 0), 0, keepdims=True)
+            embed = np.concatenate(embed, 0)
+            self.sess.run(self.targets['assign_embed'], feed_dict={self.ph['cd_embed']: embed})
 
     def train_iter(self, data_loader):
         n_critic = self.params['disc']['n_critic']
@@ -61,6 +75,7 @@ class DAE(object):
                                     self.ph['label']: labels,
                                     self.ph['d_lr_decay']: self.d_decay,
                                     self.ph['is_training']: False,
+                                    self.ph['stdw']: self.stdw,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                                   })
             update_loss(fetch, self.losses)
@@ -73,6 +88,7 @@ class DAE(object):
                                     self.ph['g_lr_decay']: self.g_decay,
                                     self.ph['e_lr_decay']: self.e_decay,
                                     self.ph['is_training']: True,
+                                    self.ph['stdw']: self.stdw,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                               })
         update_loss(fetch, self.losses)
@@ -104,6 +120,9 @@ class DAE(object):
     
     def take_step(self):
         self.epoch += 1
+        if 'adaptive_std' in self.params['embedding']:
+            self.stdw -= self.params['embedding']['adaptive_std']['decay']  
+            print('Stddev decay, current = {}'.format(self.stdw))      
         if self.epoch % self.params['network']['n_decay'] == 0:
             self.g_decay *= self.params['network']['weight_decay']
             print('G Decay, Current = {}'.format(self.g_decay))
@@ -179,35 +198,39 @@ class DAE(object):
     def get_statistics(self, epoch, domain, data_loader, col, batch_size=600):
         log_dict, embed = {}, None
         if domain == 'train':
-            embed = self.sess.run(self.graph['mu'])
-            update_loss(stat.norm(embed, 'mu_'), log_dict, False)
-            update_loss(stat.pairwise_distance(embed, 'mu_'), log_dict, False)
+            embed = self.sess.run(self.graph['embed'])
+            update_loss(stat.norm(embed, 'embed_'), log_dict, False)
+            update_loss(stat.pairwise_distance(embed, 'embed_'), log_dict, False)
 
         inp = []
         label = []
         embed2 = []
+        dbis = []       
         for clsid in tqdm(range(data_loader.nclass), desc='Get Statistics {}'.format(domain)):
             x = data_loader.sample_from_class(clsid, batch_size)
-            z = self.sess.run(self.graph['fake_z'], feed_dict={self.ph['data']: x, self.ph['is_training']: False})
+            z = self.sess.run(self.graph['z'], feed_dict={self.ph['data']: x, self.ph['is_training']: False})
             update_loss(stat.gaussian_test(z), log_dict, False)
             update_loss(stat.correlation(z), log_dict, False)
             
             nanasa = np.mean(z, 0, keepdims=True)
             embed2.append(nanasa)
-            update_loss(stat.norm(z, 'inclass_'), log_dict, False)
-            update_loss(stat.pairwise_distance(z, 'inclass_'), log_dict, False)
+            dbis.append(np.sqrt(np.mean(np.sum(np.square(z - nanasa), 1), 0)))
+            update_loss({'mean_std': np.mean(np.std(z, 0))}, log_dict, False)            
+            update_loss(stat.norm(z[:100], 'inclass_'), log_dict, False)
+            update_loss(stat.pairwise_distance(z[:100], 'inclass_'), log_dict, False)
             inp.append(z[:50, ])
             label += [clsid] * 50
         embed2 = np.concatenate(embed2, 0)
         if embed is not None:
-            update_loss({'mean_div': np.sum(np.square(embed - embed2)) / embed.shape[0]}, log_dict, False)
+            update_loss({'mean_div': np.sqrt(np.sum(np.square(embed - embed2))) / embed.shape[0]}, log_dict, False)
         update_loss(stat.norm(embed2, 'est_'), log_dict, False)
         update_loss(stat.pairwise_distance(embed2, 'est_'), log_dict, False)
+        update_loss(stat.davies_bouldin_index(np.array(dbis), stat.l2_distance(embed2)), log_dict, False)
 
         inputs = np.concatenate(inp, axis=0)
         labels = np.array(label)
-        stat.tsne_visualization(inputs, labels, os.path.join(self.logger.dir, 
-            'epoch{}_{}.png'.format(epoch, domain)), col)
+        #stat.tsne_visualization(inputs, labels, os.path.join(self.logger.dir, 
+        #    'epoch{}_{}.png'.format(epoch, domain)), col)
         self.logger.print(epoch, domain + '-stat', log_dict)
 
 
