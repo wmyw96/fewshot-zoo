@@ -15,7 +15,7 @@ def generate_params():
 
     train = {
         'batch_size': 200,
-        'num_epoches': 500,
+        'num_epoches': 100,
         'iter_per_epoch': 360,
         'valid_interval': 1,
     }
@@ -43,7 +43,7 @@ def generate_params():
         'e_m_weight': 1.0,
         'lr': lr,
         'rec_weight': 0.0,
-        'cls_weight': 0.0,
+        'cls_weight': 1.0,
         'n_decay': 30,
         'weight_decay': 1.0,
         'metric': 'cos'
@@ -89,8 +89,14 @@ def generate_params():
         'n_decay': 20,
         'weight_decay': 1.0,
         'type': 'gaussian',
-        'stddev': 1.0
+        'stddev': 1.0,
+        'adaptive_std':{
+            'start': 1.0, 
+            'end': 0.3,
+        }
     }
+    
+    embed['adaptive_std']['decay'] = (embed['adaptive_std']['start'] - embed['adaptive_std']['end']) / train['num_epoches']
 
     params = {
         'data': data,

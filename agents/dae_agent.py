@@ -35,6 +35,7 @@ class DAE(object):
             self.sess = tf.Session()
         self.step = 0
 
+        self.stdw = 1.0
         self.g_decay = 1.0
         self.d_decay = 1.0
         self.e_decay = 1.0
@@ -74,6 +75,7 @@ class DAE(object):
                                     self.ph['label']: labels,
                                     self.ph['d_lr_decay']: self.d_decay,
                                     self.ph['is_training']: False,
+                                    self.ph['stdw']: self.stdw,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                                   })
             update_loss(fetch, self.losses)
@@ -86,6 +88,7 @@ class DAE(object):
                                     self.ph['g_lr_decay']: self.g_decay,
                                     self.ph['e_lr_decay']: self.e_decay,
                                     self.ph['is_training']: True,
+                                    self.ph['stdw']: self.stdw,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                               })
         update_loss(fetch, self.losses)
@@ -117,6 +120,9 @@ class DAE(object):
     
     def take_step(self):
         self.epoch += 1
+        if 'adaptive_std' in self.params['embedding']:
+            self.stdw -= self.params['embedding']['adaptive_std']['decay']  
+            print('Stddev decay, current = {}'.format(self.stdw))      
         if self.epoch % self.params['network']['n_decay'] == 0:
             self.g_decay *= self.params['network']['weight_decay']
             print('G Decay, Current = {}'.format(self.g_decay))

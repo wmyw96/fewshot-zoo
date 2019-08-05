@@ -57,14 +57,14 @@ def wgan_gp_wdist(real_critic, fake_critic):
     return w_dist
 
 
-def euclidean_distance(a, b):
+def euclidean_distance(a, b, scale=1.0):
     # a.shape = N x D
     # b.shape = M x D
     N, D = tf.shape(a)[0], tf.shape(a)[1]
     M = tf.shape(b)[0]
     a = tf.tile(tf.expand_dims(a, axis=1), (1, M, 1))
     b = tf.tile(tf.expand_dims(b, axis=0), (N, 1, 1))
-    return tf.reduce_sum(tf.square(a - b), axis=2)
+    return tf.reduce_sum(tf.square(a - b), axis=2) * scale
 
 def cosine_similarity(x, y):
     x_norm = tf.nn.l2_normalize(x, axis=-1)

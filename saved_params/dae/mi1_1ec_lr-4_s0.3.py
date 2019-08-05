@@ -43,7 +43,7 @@ def generate_params():
         'e_m_weight': 1.0,
         'lr': lr,
         'rec_weight': 0.0,
-        'cls_weight': 0.0,
+        'cls_weight': 1.0,
         'n_decay': 30,
         'weight_decay': 1.0,
         'metric': 'cos'
@@ -89,7 +89,7 @@ def generate_params():
         'n_decay': 20,
         'weight_decay': 1.0,
         'type': 'gaussian',
-        'stddev': 1.0
+        'stddev': 0.3
     }
 
     params = {

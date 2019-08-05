@@ -76,6 +76,7 @@ def get_dae_ph(params):
     ph['eval_label'] = tf.placeholder(dtype=tf.int64,
                                 shape=[None, None],
                                 name='label')
+    ph['stdw'] = tf.placeholder(dtype=tf.float32, shape=[], name='stdw')
     ph['cd_embed'] = tf.placeholder(dtype=tf.float32, shape=[params['data']['nclass'], params['network']['z_dim']], name='cd_embed')
 
     return ph
@@ -127,29 +128,13 @@ def get_dae_graph(params, ph):
                 graph['mu'] = \
                     tf.get_variable('mu', [nclass, z_dim],
                                     initializer=tf.random_normal_initializer)
-
+                stddev *= ph['stdw']
                 real_z_mean = tf.gather(graph['mu'], ph['label'], axis=0)
                 noise = tf.random_normal([batch_size, z_dim], 0.0, stddev, 
                                          seed=params['train']['seed'])
                 real_z = real_z_mean + noise
                 graph['real_z'] = real_z
                 graph['fake_z'] = z
-            elif params['embedding']['type'] == 'rgaussian':
-                nclass = params['network']['nclass']
-                z_dim = params['network']['z_dim']
-                stddev = params['embedding']['stddev']
-
-                graph['mu'] = \
-                    tf.get_variable('mu', [nclass, z_dim],
-                                    initializer=tf.random_normal_initializer)
-
-                real_z_mean = tf.gather(graph['mu'], ph['label'], axis=0)
-                noise = tf.random_normal([batch_size, z_dim], 0.0, stddev,
-                                         seed=params['train']['seed'])
-                real_z = noise
-                graph['real_z'] = real_z
-                graph['fake_z'] = z - real_z_mean
-                #raise ValueError('Not Implemented Embedding Type')
                 
         graph['embed'] = graph['mu']
         if 'vmf' in params['network']:
@@ -245,10 +230,11 @@ def get_dae_targets(params, ph, graph, graph_vars):
     if params['network']['use_decoder']:
         gen['rec_loss'] = tf.reduce_mean(tf.abs(ph['data'] - graph['x_rec']))
         gen['g_loss'] += gen['rec_loss'] * params['network']['rec_weight']
-
+    
+    stddev = params['embedding']['stddev'] * ph['stdw']
     # classfication loss
     log_p_y_prior = tf.log(tf.expand_dims(ph['p_y_prior'], 0))      # [1, K]
-    dist = euclidean_distance(graph['z'], graph['mu'])         # [b, K]
+    dist = euclidean_distance(graph['z'], graph['mu'], scale=1.0/stddev/stddev)         # [b, K]
     
     logits = -dist + log_p_y_prior
     
