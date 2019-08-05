@@ -1,0 +1,3 @@
+
+- fixed mu & well initialized: dae.mi1_1ec_nocls_rg08_05_10_13
+- fixed mu & gaussian initialized: dae.mi1_1ec_nocls_rg08_05_13_33

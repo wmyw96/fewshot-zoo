@@ -1,0 +1,58 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+\title{Small Sample Learning GAN Implementation}
+\author{}
+
+\begin{document}
+
+\maketitle
+
+\section{Visualization Results}
+
+visualization illustration in Table \ref{tb:vis-content}, where $\mu_k$ is the learned cluster centor for class k, $e_k = \frac{1}{n_k}\sum_{i=1}^{n_k} {f_\theta(x_i)}$, where $x_i$'s label is $k$, $d_k = \frac{1}{n_k}\sum_{i=1}^{n_k} (\|f_\theta(x_i)-e_k\|_2)$.
+
+\begin{table}[!htbp]
+\centering
+\caption{Visualization Contents Overview}\label{tb:vis-content}
+\begin{tabular}{cccc}
+\toprule
+(1) & (2) & (3) \\
+Davies-Bouldin Index & Elementwise Gaussian Test & Mean norm of $e-\mu$ \\
+\emph{samller is better}  & \emph{SF test, ideal is 0.05}  & \emph{ideal is 0} \\ 
+\midrule
+(4) & (5) & (6) \\
+Performance (Accuracy) & Elementwise std  &  Norm of $e$ and $\mu$ \\
+\emph{larger is better}  & \emph{ideal is 1.0}  & \emph{ideal is should be same} \\ 
+\midrule
+(7) & (8) & (9) \\
+Mean $dv$ & Correlation & Pairwise $e$ distance \\
+\emph{should smaller than 6} & \emph{ideal is 0.} & \emph{should be larger than (7)}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{ProtoNet vs DVE}
+
+\noindent \textbf{Gaussian Test} DVE is better, and the tightness of cluster is then better, superised that there is no generalization gap between train\& test gaussian test for DVE.
+
+\noindent \textbf{$e$'s pairwise distance} there is a generalization gap between train\& test tightness and $e$'s pairwise distance for DVE where there is no such gap for ProtoNet
+
+\subsection{DAE's problem now}
+
+\noindent \textbf{Could it learn guassian dist?} Yes, it could learn gaussian distribution very well (better than DVE) (dae.pdf), but the generalization gap of $e$'s pairwise distance is very large
+    
+    \begin{itemize}
+        \item Have tried to use a larger classification loss (dae\_c10)
+        \item Have tried to use a smaller std to model the cluster (dae\_s0.3) 
+    \end{itemize}
+
+\noindent \textbf{Hardness of generalize pairwise distance}
+
+\noindent \textbf{Best Perf} 
+\end{document}
