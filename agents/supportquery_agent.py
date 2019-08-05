@@ -45,7 +45,7 @@ class SupportQueryAgent(object):
         self.save_model = tf.train.Saver(var_list=self.save_vars)
         self.killer = GracefulKiller()
 
-    def start(self):
+    def start(self, data_loader=None):
         self.sess.run(tf.global_variables_initializer())
 
     def train_iter(self, data_loader):
@@ -125,9 +125,10 @@ class SupportQueryAgent(object):
         self.logger.print(epoch, 'training', self.losses)
         self.losses = {}
 
-    def get_statistics(self, epoch, domain, data_loader, col, batch_size=100):
+    def get_statistics(self, epoch, domain, data_loader, col, batch_size=600):
         log_dict, embed = {}, None
 
+        dbis = []
         inp = []
         label = []
         embed2 = []
@@ -140,15 +141,18 @@ class SupportQueryAgent(object):
             update_loss(stat.correlation(z), log_dict, False)
 
             nanasa = np.mean(z, 0, keepdims=True)
+            dbis.append(np.sqrt(np.mean(np.sum(np.square(z - nanasa), 1), 0)))
             embed2.append(nanasa)
+            update_loss({'mean_std': np.mean(np.std(z, 0))}, log_dict, False)
             update_loss(stat.norm(z, 'inclass_'), log_dict, False)
-            update_loss(stat.pairwise_distance(z, 'inclass_'), log_dict, False)
+            update_loss(stat.pairwise_distance(z[:100,], 'inclass_'), log_dict, False)
             inp.append(z[:50, ])
             label += [clsid] * 50
         
         embed2 = np.concatenate(embed2, 0)
         update_loss(stat.norm(embed2, 'est_'), log_dict, False)
         update_loss(stat.pairwise_distance(embed2, 'est_'), log_dict, False)
+        update_loss(stat.davies_bouldin_index(np.array(dbis), stat.l2_distance(embed2)), log_dict, False)
 
         inputs = np.concatenate(inp, axis=0)
         labels = np.array(label)
