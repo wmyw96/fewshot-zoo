@@ -69,10 +69,14 @@ class DAE(object):
 
         for i in range(n_critic):
             inputs, labels = data_loader.next_batch(batch_size)
+            inputs_, labels_ = data_loader.next_batch(batch_size)
+
             fetch = self.sess.run(self.targets['disc'], 
                                   feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
+                                    self.ph['data_']: inputs_,
+                                    self.ph['label_']: labels_,                                    
                                     self.ph['d_lr_decay']: self.d_decay,
                                     self.ph['is_training']: False,
                                     self.ph['stdw']: self.stdw,
@@ -81,10 +85,13 @@ class DAE(object):
             update_loss(fetch, self.losses)
 
         inputs, labels = data_loader.next_batch(batch_size)
+        inputs_, labels_ = data_loader.next_batch(batch_size)
         fetch = self.sess.run(self.targets['gen'], 
                               feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
+                                    self.ph['data_']: inputs_,
+                                    self.ph['label_']: labels_,
                                     self.ph['g_lr_decay']: self.g_decay,
                                     self.ph['e_lr_decay']: self.e_decay,
                                     self.ph['is_training']: True,

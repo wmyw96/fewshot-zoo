@@ -1,3 +1,7 @@
 
 - fixed mu & well initialized: dae.mi1_1ec_nocls_rg08_05_10_13
 - fixed mu & gaussian initialized: dae.mi1_1ec_nocls_rg08_05_13_33
+- learnable mu: dae.mi1_1ec_lr-4_nocls08_05_15_07
+
+
+- overall: dae.mi1_1ec_lr-408_05_15_49

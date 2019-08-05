@@ -56,6 +56,14 @@ def get_dae_ph(params):
     ph['label'] = tf.placeholder(dtype=tf.int64,
                                 shape=[None],
                                 name='label')
+
+    ph['data_'] = tf.placeholder(dtype=tf.float32, 
+                                shape=[None] + params_d['x_size'],
+                                name='x')
+    ph['label_'] = tf.placeholder(dtype=tf.int64,
+                                shape=[None],
+                                name='label')
+
     ph['g_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='g_lr_decay')
     ph['e_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='e_lr_decay')
     ph['d_lr_decay'] = tf.placeholder(dtype=tf.float32, shape=[], name='d_lr_decay')
@@ -88,6 +96,9 @@ def get_dae_graph(params, ph):
     batch_size = params['train']['batch_size']
 
     graph['one_hot_label'] = tf.one_hot(ph['label'], params['data']['nclass'])  # [b, K]
+    graph['one_hot_label_'] = tf.one_hot(ph['label_'], params['data']['nclass'])  # [b, K]
+    stddev = params['embedding']['stddev'] * ph['stdw']
+
     with tf.variable_scope('dae', reuse=False):
         # Encoder
         # Fake Samples
@@ -96,21 +107,8 @@ def get_dae_graph(params, ph):
             graph['z'] = z
 
         # For evaluation
-        #ns = tf.shape(ph['support'])[0]
-        #nq = tf.shape(ph['query'])[0]
-        #n_way = tf.shape(ph['support'])[1]
         ns, nq, n_way = ph['ns'], ph['nq'], ph['n_way']
         
-        #sx = tf.reshape(ph['support'], tf.convert_to_tensor([ns*n_way] + params['data']['x_size']))  # [ns * k, sz]
-        #qx = tf.reshape(ph['query'], tf.convert_to_tensor([nq*n_way] + params['data']['x_size']))    # [nq * k, sz]
-
-        #with tf.variable_scope('encoder', reuse=True):
-        #    sz = graph['support_z'] = dae_encoder_factory(x[:ns*n_way,:], ph, params['encoder'])
-        #with tf.variable_scope('encoder', reuse=True):
-        #    qz = graph['query_z'] = dae_encoder_factory(x[ns*n_way:,:], ph, params['encoder'])
-        #sz = z[:ns*n_way,:]
-        #qz = z[ns*n_way:,:]
-        #graph['eval_ent'], graph['eval_acc'] = proto_model(sz, qz, ns, nq, n_way, ph['eval_label'])
         # Decoder
         with tf.variable_scope('decoder', reuse=False):
             if params['network']['use_decoder']:
@@ -123,12 +121,10 @@ def get_dae_graph(params, ph):
             if params['embedding']['type'] == 'gaussian':
                 nclass = params['network']['nclass']
                 z_dim = params['network']['z_dim']
-                stddev = params['embedding']['stddev']
 
                 graph['mu'] = \
                     tf.get_variable('mu', [nclass, z_dim],
                                     initializer=tf.random_normal_initializer)
-                stddev *= ph['stdw']
                 real_z_mean = tf.gather(graph['mu'], ph['label'], axis=0)
                 noise = tf.random_normal([batch_size, z_dim], 0.0, stddev, 
                                          seed=params['train']['seed'])
@@ -162,10 +158,39 @@ def get_dae_graph(params, ph):
         if params['disc']['gan-loss'] == 'wgan-gp':
             alpha = tf.random_uniform([batch_size, 1], 0, 1, 
                                       seed=params['train']['seed'])
-            graph['hat_z'] = real_z * alpha + (1 - alpha) * z
+            graph['hat_z'] = graph['fake_z'] * alpha + (1 - alpha) * graph['real_z']
             with tf.variable_scope('disc-embed', reuse=True):
                 graph['hat_z_critic'], graph['hat_z'] = \
                                         dae_disc_factory(graph['hat_z'], graph['one_hot_label'], 
+                                                         ph, params['disc'], True)
+    with tf.variable_scope('dae', reuse=True):
+        lda = tf.random_uniform([batch_size, 1], 0, 1, 
+                                seed=params['train']['seed'])
+        x_inter = lda * ph['data'] + (1 - lda) * ph['data_']
+        onehot_inter = lda * graph['one_hot_label'] + (1 - lda) * graph['one_hot_label_']
+
+        with tf.variable_scope('encoder', reuse=True):
+            z_inter = dae_encoder_factory(x_inter, ph, params['encoder'], True)
+            graph['real_z_inter'] = z_inter
+
+        real_z_mean_inter = tf.matmul(onehot_inter, tf.transpose(graph['mu'], [0, 1]))
+        graph['real_z_inter'] = tf.random_normal([batch_size, z_dim], 0.0, stddev, 
+                                                 seed=params['train']['seed']) + real_z_mean_inter
+
+        with tf.variable_scope('disc-embed', reuse=True):
+            graph['fake_z_inter_critic'] = dae_disc_factory(graph['fake_z_inter'], onehot_inter, 
+                                                            ph, params['disc'])
+        with tf.variable_scope('disc-embed', reuse=True):
+            graph['real_z_inter_critic'] = dae_disc_factory(graph['real_z_inter'], onehot_inter, 
+                                                            ph, params['disc'])
+
+        if params['disc']['gan-loss'] == 'wgan-gp':
+            alpha2 = tf.random_uniform([batch_size, 1], 0, 1, 
+                                      seed=params['train']['seed'])
+            graph['hat_z_inter'] = graph['real_z_inter'] * alpha + (1 - alpha) * graph['fake_z_inter']
+            with tf.variable_scope('disc-embed', reuse=True):
+                graph['hat_z_inter_critic'], graph['hat_z_inter'] = \
+                                        dae_disc_factory(graph['hat_z_inter'], onehot_inter, 
                                                          ph, params['disc'], True)
     return graph
 
@@ -203,8 +228,13 @@ def get_dae_targets(params, ph, graph, graph_vars):
         gradient_penalty = wgan_gp_gp_loss(graph['hat_z'], graph['hat_z_critic'])
         d_loss = -w_dist + params['disc']['gp_weight'] * gradient_penalty
 
+        w_dist_inter = wgan_gp_wdist(graph['real_z_inter_critic'], graph['fake_z_inter_critic'])
+        gradient_penalty_inter = wgan_gp_gp_loss(graph['hat_z_inter'], graph['hat_z_inter_critic'])
+        d_loss_inter = -w_dist_inter + params['disc']['gp_weight'] * gradient_penalty_inter
+
+        d_loss_all = 0.5 * (d_loss_inter + d_loss)
         disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['d_lr_decay'])
-        disc_grads = disc_op.compute_gradients(loss=d_loss,
+        disc_grads = disc_op.compute_gradients(loss=d_loss_all,
                                                var_list=graph_vars['disc'])
         disc_train_op = disc_op.apply_gradients(grads_and_vars=disc_grads)
 
@@ -213,6 +243,10 @@ def get_dae_targets(params, ph, graph, graph_vars):
             'w_dist_loss': w_dist,
             'gp_loss': gradient_penalty,
             'd_loss': d_loss
+            'w_dist_inter_loss': w_dist_inter,
+            'gp_inter_loss': gradient_penalty,
+            'd_inter_loss': d_inter_loss,
+            'd_loss_all': d_loss_all
         }
     else:
         raise ValueError('Not Implemented GAN loss')
@@ -223,7 +257,7 @@ def get_dae_targets(params, ph, graph, graph_vars):
     gen['g_loss'] = 0.0
 
     # embedding loss
-    gen['embed_loss'] = w_dist
+    gen['embed_loss'] = 0.5 * (w_dist + w_dist_inter)
     gen['g_loss'] += gen['embed_loss'] * params['network']['e_m_weight']
 
     # reconstruction loss
