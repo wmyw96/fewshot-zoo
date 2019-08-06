@@ -76,7 +76,7 @@ def generate_params():
         'gan-loss': 'wgan-gp',
         'type': 'fc',
         'gp_weight': 10.0,
-        'n_critic': 5,
+        'n_critic': 8,
         'onehot_dim': z_dim,
         'nclass': nclass,
         'num_hidden': [1600]*3 + [1],

@@ -49,7 +49,7 @@ class DAE(object):
 
     def start(self, data_loader=None):
         self.sess.run(tf.global_variables_initializer())
-        if False:
+        if True:
             batch_size = 400
             embed = [ [] for i in range(self.nclass) ]
             for it in range(1000):

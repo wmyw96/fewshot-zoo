@@ -31,8 +31,6 @@ def generate_params():
     reg_scale = 1e-8
     init = 'xavier'
     act = 'relu'
-    disc_init = 'xavier'
-    disc_act = 'leaky_relu'
     h_dim = 1600
     z_dim = 512
     #z_dim = 1600
@@ -45,7 +43,7 @@ def generate_params():
         'e_m_weight': 1.0,
         'lr': lr,
         'rec_weight': 0.0,
-        'cls_weight': 1.0,
+        'cls_weight': 0.1,
         'n_decay': 30,
         'weight_decay': 1.0,
         'metric': 'cos'
@@ -80,8 +78,8 @@ def generate_params():
         'onehot_dim': z_dim,
         'nclass': nclass,
         'num_hidden': [1600]*3 + [1],
-        'activation': [disc_act]*3 + [None],
-        'init': [disc_init]*4,
+        'activation': [act]*3 + [None],
+        'init': [init]*4,
         'regularizer': [None]*4,
         'reg_scale': [reg_scale]*4
     }

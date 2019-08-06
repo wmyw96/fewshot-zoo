@@ -171,7 +171,7 @@ def get_dae_graph(params, ph):
 
         with tf.variable_scope('encoder', reuse=True):
             z_inter = dae_encoder_factory(x_inter, ph, params['encoder'], True)
-            graph['real_z_inter'] = z_inter
+            graph['fake_z_inter'] = z_inter
 
         real_z_mean_inter = tf.matmul(onehot_inter, tf.transpose(graph['mu'], [0, 1]))
         graph['real_z_inter'] = tf.random_normal([batch_size, z_dim], 0.0, stddev, 
@@ -232,7 +232,7 @@ def get_dae_targets(params, ph, graph, graph_vars):
         gradient_penalty_inter = wgan_gp_gp_loss(graph['hat_z_inter'], graph['hat_z_inter_critic'])
         d_loss_inter = -w_dist_inter + params['disc']['gp_weight'] * gradient_penalty_inter
 
-        d_loss_all = 0.5 * (d_loss_inter + d_loss)
+        d_loss_all = d_loss #0.5 * (d_loss_inter + d_loss)
         disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['d_lr_decay'])
         disc_grads = disc_op.compute_gradients(loss=d_loss_all,
                                                var_list=graph_vars['disc'])
@@ -242,10 +242,10 @@ def get_dae_targets(params, ph, graph, graph_vars):
             'train_op': disc_train_op,
             'w_dist_loss': w_dist,
             'gp_loss': gradient_penalty,
-            'd_loss': d_loss
+            'd_loss': d_loss,
             'w_dist_inter_loss': w_dist_inter,
-            'gp_inter_loss': gradient_penalty,
-            'd_inter_loss': d_inter_loss,
+            'gp_inter_loss': gradient_penalty_inter,
+            'd_inter_loss': d_loss_inter,
             'd_loss_all': d_loss_all
         }
     else:
@@ -257,7 +257,7 @@ def get_dae_targets(params, ph, graph, graph_vars):
     gen['g_loss'] = 0.0
 
     # embedding loss
-    gen['embed_loss'] = 0.5 * (w_dist + w_dist_inter)
+    gen['embed_loss'] = w_dist #0.5 * (w_dist + w_dist_inter)
     gen['g_loss'] += gen['embed_loss'] * params['network']['e_m_weight']
 
     # reconstruction loss
