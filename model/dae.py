@@ -248,6 +248,22 @@ def get_dae_targets(params, ph, graph, graph_vars):
             'd_inter_loss': d_loss_inter,
             'd_loss_all': d_loss_all
         }
+    elif params['disc']['gan-loss'] == 'gan':
+        entropy = tf.log(tf.nn.sigmoid(graph['real_z_critic'])) + tf.log(1 - tf.nn.sigmoid(graph['fake_z_critic']))
+        disc_acc = 0.5 * (tf.mean(graph['real_z_critic'] > 0) + tf.mean(graph['fake_z_critic'] < 0))
+        d_loss = entropy
+
+        d_loss_all = d_loss
+        disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['d_lr_decay'])
+        disc_grads = disc_op.compute_gradients(loss=d_loss_all,
+                                               var_list=graph_vars['disc'])
+        disc_train_op = disc_op.apply_gradients(grads_and_vars=disc_grads)
+        disc = {
+            'train_op': disc_train_op,
+            'entropy': entropy,
+            'disc_acc': disc_acc,
+            'd_loss': d_loss
+        }
     else:
         raise ValueError('Not Implemented GAN loss')
 
@@ -257,7 +273,11 @@ def get_dae_targets(params, ph, graph, graph_vars):
     gen['g_loss'] = 0.0
 
     # embedding loss
-    gen['embed_loss'] = w_dist #0.5 * (w_dist + w_dist_inter)
+    if params['disc']['gan-loss'] == 'wgan-gp':
+        gen['embed_loss'] = w_dist #0.5 * (w_dist + w_dist_inter)
+    elif params['disc']['gan-loss'] == 'gan':
+        gen['embed_loss'] = entropy
+    
     gen['g_loss'] += gen['embed_loss'] * params['network']['e_m_weight']
 
     # reconstruction loss

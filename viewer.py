@@ -145,26 +145,36 @@ a.load_log('vmf', 'logs/dae.mi1_1vmf08_02_11_59/main.log')
 
 plot = 'dae'
 b = LogViewer()
+
+### learnable mu
+#b.load_log('dae', 'logs/dae.mi1_1ec_lr-4_nocls08_06_09_46/main.log')
+#b.load_log('dae', 'logs/[08_06_10_37]dae.mi1_1ec_nocls_sz/main.log')
+
 ### fixed & well init mu
-# b.load_log('dae', 'logs/dae.mi1_1ec_nocls_rg08_05_10_13/main.log')
+#b.load_log('dae', 'logs/dae.mi1_1ec_nocls_rg08_05_10_13/main.log')
 
 ### fixed & guassian init mu
-
+#b.load_log('dae', 'logs/dae.mi1_1ec_nocls_rg08_05_13_33/main.log')
 
 ### best
 #b.load_log('dae', 'logs/dae.mi1_1ec08_04_16_20/main.log')
 
 ### overall
 #b.load_log('dae', 'logs/dae.mi1_1ec_lr-408_05_15_49/main.log') 
+#b.load_log('dae', 'logs/[08_06_11_12]dae.mi1_1ec_lr-4_sz3/main.log')
+#b.load_log('dae', 'logs/[08_06_12_03]dae.mi1_1ec_lr-4_sz3/main.log')
+b.load_log('dae', 'logs/[08_06_12_22]dae.mi1_1ec_lr-4_sz3_nt/main.log')
 
 ### cls_weight=10
 #b.load_log('dae', 'logs/dae.mi1_1ec_lr-4_c1008_05_16_21/main.log')
 
 ### s=0.3
-b.load_log('dae', 'logs/dae.mi1_1ec_lr-4_sz308_05_16_36/main.log')
+#b.load_log('dae', 'logs/dae.mi1_1ec_lr-4_sz308_05_16_36/main.log')
 
 ### adaptive s
 #b.load_log('dae', 'logs/dae.mi1_1ec_lr-4_ads08_05_17_56/main.log')
+
+#b.load_log('dae', 'logs/dae.mi1_1ec_lr-408_05_23_21/main.log')
 
 result = [
     ('dae', 'train-stat', 'embed_norm'),
