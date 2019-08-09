@@ -131,15 +131,6 @@ class LogViewer(object):
         plt.ylabel('value')
         plt.show()        
 
-
-a = LogViewer()
-a.load_log('dae', 'logs/dae.mi1_1ec08_02_10_26/main.log')
-a.load_log('dae-lr1', 'logs/dae.mi1_1ec_elr107_29_13_06/main.log')
-a.load_log('dve', 'logs/dve.im07_29_13_06/main.log')
-a.load_log('proto', 'logs/protonet.exp_im207_29_16_36/main.log')
-a.load_log('vmf', 'logs/dae.mi1_1vmf08_02_11_59/main.log')
-
-
 ####### DAE
 
 
@@ -164,6 +155,26 @@ b = LogViewer()
 #b.load_log('dae', 'logs/[08_06_11_12]dae.mi1_1ec_lr-4_sz3/main.log')
 #b.load_log('dae', 'logs/[08_06_12_03]dae.mi1_1ec_lr-4_sz3/main.log')
 b.load_log('dae', 'logs/[08_06_12_22]dae.mi1_1ec_lr-4_sz3_nt/main.log')
+b.load_log('dae', 'logs/[08_06_18_16]dae.gan_sz/main.log')
+b.load_log('dae', 'logs/[08_06_19_28]dae.gan_sz/main.log')
+b.load_log('dae', 'logs/[08_06_19_56]dae.gan_sz_elr-2/main.log')
+b.load_log('dae', 'logs/[08_06_20_43]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_06_21_43]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_07_01_58]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_07_10_18]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_07_12_05]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_07_14_36]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_07_16_23]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_07_18_14]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_07_20_40]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_07_21_25]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_08_13_31]dae.gan_fraw/main.log')
+b.load_log('dae', 'logs/[08_08_21_23]dae.gan_fraw_lr2e-4/main.log')
+b.load_log('dae', 'logs/[08_09_00_59]dae.gan_sz_elr-3/main.log')
+b.load_log('dae', 'logs/[08_08_21_23]dae.gan_fraw_lr2e-4/main.log')
+b.load_log('dae', 'logs/[08_09_10_09]dae.wgan_lr-4/main.log')
+b.load_log('dae', 'logs/[08_09_13_03]dae.wgan_lr-4_dropz7/main.log')
+b.load_log('dae', 'logs/[08_09_14_27]dae.wgan_lr-4_dropz6/main.log')
 
 ### cls_weight=10
 #b.load_log('dae', 'logs/dae.mi1_1ec_lr-4_c1008_05_16_21/main.log')
@@ -390,9 +401,3 @@ if plot == 'protonet':
     plt.subplot(3,3,9)
     b.plot(result_exclass)
     plt.show()
-
-#a.self_plot(result_dist_ratio)
-
-#a.plot(result_dist)
-
-print(a.get_log('dae', 'val', '5-way 5-shot val'))

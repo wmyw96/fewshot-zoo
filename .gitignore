@@ -1,4 +1,5 @@
 logs/
+oldlogs/
 __pycache__/
 saved_models
 

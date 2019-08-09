@@ -5,3 +5,8 @@
 
 
 - overall: dae.mi1_1ec_lr-408_05_15_49
+
+
+- tunable mu & well initialized & no cls loss: could norm generalize?  dae.mi1_1ec_lr-4_nocls08_06_09_46
+- tunable mu & well initialized: [08_06_11_12]dae.mi1_1ec_lr-4_sz3
+- tunable mu & well initialized & learn disc more: [08_06_12_22]dae.mi1_1ec_lr-4_sz3_nt
