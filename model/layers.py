@@ -116,6 +116,9 @@ def feedforward(in_node, is_training, params, scope, scale=False, scale_fn=None,
             cur_layer = tf.layers.dense(layers[-1], num_hidden[i],
                                         name='dense_'+str(i), activation=activation[i],
                                         kernel_initializer=init[i], kernel_regularizer=reg[i])
+            if params['dropout'][i] < 1.0:
+                print('Use Dropout in Layer {} of Scope {}'.format(i, scope))
+                cur_layer = tf.layers.dropout(cur_layer, rate=params['dropout'][i], training=is_training)
             layers.append(cur_layer)
 
     # Output node is the last layer of the network

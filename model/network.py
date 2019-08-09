@@ -1,5 +1,6 @@
 import tensorflow as tf
 from model.loss import *
+import tensorflow.contrib.slim as slim
 
 
 def conv_block(inputs, out_channels, is_training=None, name='conv'):
@@ -11,6 +12,33 @@ def conv_block(inputs, out_channels, is_training=None, name='conv'):
         conv = tf.nn.relu(conv)
         conv = tf.contrib.layers.max_pool2d(conv, 2)
         return conv
+
+# Create model of CNN with slim api
+def reg_CNN(inputs, is_training=True):
+    batch_norm_params = {'is_training': is_training, 'decay': 0.9, 'updates_collections': None}
+    with slim.arg_scope([slim.conv2d, slim.fully_connected],
+                        activation_fn=tf.nn.leaky_relu,
+                        weights_initializer=tf.contrib.layers.variance_scaling_initializer(), #tf.truncated_normal_initializer(0.0, 0.01),
+                        weights_regularizer=slim.l2_regularizer(0.0005),
+                        normalizer_fn=slim.batch_norm,
+                        normalizer_params=batch_norm_params):
+        nf = 64
+        x = tf.reshape(inputs, [-1, 84, 84, 3])
+        net = slim.conv2d(x, nf, [3, 3], scope='conv1', padding='SAME')
+        net = slim.max_pool2d(net, [2, 2], scope='pool1')
+        net = slim.conv2d(net, nf, [3, 3], scope='conv2', padding='SAME')
+        net = slim.max_pool2d(net, [2, 2], scope='pool2')
+        net = slim.conv2d(net, nf, [3, 3], scope='conv3', padding='SAME')
+        net = slim.max_pool2d(net, [2, 2], scope='pool3')
+        net = slim.conv2d(net, nf, [3, 3], scope='conv4', padding='SAME')
+        net = slim.max_pool2d(net, [2, 2], scope='pool4')
+        net = slim.flatten(net, scope='flatten')
+        z = tf.identity(net)
+        net = slim.fully_connected(net, 1024, scope='fc1')
+        net = slim.dropout(net, is_training=is_training, scope='dropout1')  # 0.5 by default
+        outputs = slim.fully_connected(net, 64, activation_fn=None, normalizer_fn=None, scope='fco')
+    return outputs, z
+
 
 def four_block_cnn_encoder(x, h_dim, z_dim, is_training, reuse=False):
     with tf.variable_scope('encoder', reuse=reuse):

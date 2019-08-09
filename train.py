@@ -95,10 +95,13 @@ if args.type == 'train':
                 #agent.evallll(valid)
                 agent.eval(epoch, valid, test)
         if args.stat:
-            agent.get_statistics(epoch, 'train', train, color_set)
-            agent.get_statistics(epoch, 'val', valid, color_set)
-            agent.get_statistics(epoch, 'test', test, color_set)
-
+            done = agent.get_statistics(epoch, 'train', train, color_set)
+            if not done:
+                done = agent.get_statistics(epoch, 'val', valid, color_set)
+            if not done:
+                done = agent.get_statistics(epoch, 'test', test, color_set)
+        if done:
+            break
         for iters in tqdm(range(params['train']['iter_per_epoch'])):
             done = agent.train_iter(train)
             if done:

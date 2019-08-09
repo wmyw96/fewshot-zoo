@@ -10,7 +10,7 @@ def dae_encoder_factory(inp, ph, params, reuse=True):
     if params['type'] == 'fc':
         return feedforward(inp, ph['is_training'], params, 'fc')
     elif params['type'] == '4blockcnn':
-        feat = four_block_cnn_encoder(inp, 64, 64, ph['is_training'])
+        pred, feat = reg_CNN(inp, ph['is_training'])
         return feedforward(feat, ph['is_training'], params, 'fc')
     else:
         raise NotImplementedError
@@ -25,14 +25,11 @@ def dae_decoder_factory(inp, ph, params):
 
 def dae_disc_factory(inp, label, ph, params, return_inp=False):
     if params['type'] == 'fc':
-        inp_vec = tf.get_variable('inp_vec', [params['nclass'], params['onehot_dim']], 
-                                  initializer=tf.contrib.layers.variance_scaling_initializer())
-        cat_vec = tf.matmul(label, inp_vec)
-        inp_concat = tf.concat([inp, cat_vec], axis=1)
+        inp_concat = tf.concat([inp, label], axis=1)
         #if return_inp:
         out = feedforward(inp_concat, ph['is_training'], params, 'fc')
         if return_inp:
-            return out, inp
+            return out, inp_concat
         else:
             return out
     else:
@@ -131,12 +128,21 @@ def get_dae_graph(params, ph):
                 real_z = real_z_mean + noise
                 graph['real_z'] = real_z
                 graph['fake_z'] = z
-                
+            elif params['embedding']['type'] == 'rgaussian':
+                nclass = params['network']['nclass']
+                z_dim = params['network']['z_dim']
+
+                graph['mu'] = \
+                    tf.get_variable('mu', [nclass, z_dim],
+                                    initializer=tf.random_normal_initializer)
+                real_z_mean = tf.gather(graph['mu'], ph['label'], axis=0)
+                noise = tf.random_normal([batch_size, z_dim], 0.0, stddev,
+                                         seed=params['train']['seed'])
+                real_z = noise #real_z_mean + noise
+                graph['real_z'] = real_z
+                graph['fake_z'] = z - real_z_mean
+            
         graph['embed'] = graph['mu']
-        if 'vmf' in params['network']:
-            graph['fake_z'] = normalize(graph['fake_z'])
-            graph['real_z'] = normalize(graph['real_z'])
-            graph['embed'] = normalize(graph['mu'])
         
         sz = graph['z'][:ns*n_way,:]
         qz = graph['z'][ns*n_way:,:]
@@ -158,12 +164,13 @@ def get_dae_graph(params, ph):
         if params['disc']['gan-loss'] == 'wgan-gp':
             alpha = tf.random_uniform([batch_size, 1], 0, 1, 
                                       seed=params['train']['seed'])
+            
             graph['hat_z'] = graph['fake_z'] * alpha + (1 - alpha) * graph['real_z']
             with tf.variable_scope('disc-embed', reuse=True):
                 graph['hat_z_critic'], graph['hat_z'] = \
                                         dae_disc_factory(graph['hat_z'], graph['one_hot_label'], 
                                                          ph, params['disc'], True)
-    with tf.variable_scope('dae', reuse=True):
+    '''with tf.variable_scope('dae', reuse=True):
         lda = tf.random_uniform([batch_size, 1], 0, 1, 
                                 seed=params['train']['seed'])
         x_inter = lda * ph['data'] + (1 - lda) * ph['data_']
@@ -192,6 +199,7 @@ def get_dae_graph(params, ph):
                 graph['hat_z_inter_critic'], graph['hat_z_inter'] = \
                                         dae_disc_factory(graph['hat_z_inter'], onehot_inter, 
                                                          ph, params['disc'], True)
+    '''
     return graph
 
 
@@ -228,12 +236,13 @@ def get_dae_targets(params, ph, graph, graph_vars):
         gradient_penalty = wgan_gp_gp_loss(graph['hat_z'], graph['hat_z_critic'])
         d_loss = -w_dist + params['disc']['gp_weight'] * gradient_penalty
 
-        w_dist_inter = wgan_gp_wdist(graph['real_z_inter_critic'], graph['fake_z_inter_critic'])
+        '''w_dist_inter = wgan_gp_wdist(graph['real_z_inter_critic'], graph['fake_z_inter_critic'])
         gradient_penalty_inter = wgan_gp_gp_loss(graph['hat_z_inter'], graph['hat_z_inter_critic'])
         d_loss_inter = -w_dist_inter + params['disc']['gp_weight'] * gradient_penalty_inter
+        '''
 
         d_loss_all = d_loss #0.5 * (d_loss_inter + d_loss)
-        disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['d_lr_decay'])
+        disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['d_lr_decay'], beta1=0.5)
         disc_grads = disc_op.compute_gradients(loss=d_loss_all,
                                                var_list=graph_vars['disc'])
         disc_train_op = disc_op.apply_gradients(grads_and_vars=disc_grads)
@@ -243,25 +252,24 @@ def get_dae_targets(params, ph, graph, graph_vars):
             'w_dist_loss': w_dist,
             'gp_loss': gradient_penalty,
             'd_loss': d_loss,
-            'w_dist_inter_loss': w_dist_inter,
-            'gp_inter_loss': gradient_penalty_inter,
-            'd_inter_loss': d_loss_inter,
             'd_loss_all': d_loss_all
         }
     elif params['disc']['gan-loss'] == 'gan':
-        entropy = tf.log(tf.nn.sigmoid(graph['real_z_critic'])) + tf.log(1 - tf.nn.sigmoid(graph['fake_z_critic']))
-        disc_acc = 0.5 * (tf.mean(graph['real_z_critic'] > 0) + tf.mean(graph['fake_z_critic'] < 0))
-        d_loss = entropy
+        entropy = disc_gan_loss(graph['real_z_critic'], graph['fake_z_critic']) 
+        #entropy = tf.log(tf.nn.sigmoid(graph['real_z_critic']) + 1e-9) + tf.log(1 - tf.nn.sigmoid(graph['fake_z_critic']) + 1e-9)
+        disc_acc = 0.5 * (tf.reduce_mean(tf.to_float(tf.greater(graph['real_z_critic'], 0))) + \
+			 tf.reduce_mean(tf.to_float(tf.less(graph['fake_z_critic'], 0))) )
+        d_loss = entropy * params['disc']['em_weight']
 
         d_loss_all = d_loss
-        disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['d_lr_decay'])
+        disc_op = tf.train.AdamOptimizer(params['disc']['lr'] * ph['d_lr_decay'], beta1=0.5)
         disc_grads = disc_op.compute_gradients(loss=d_loss_all,
                                                var_list=graph_vars['disc'])
         disc_train_op = disc_op.apply_gradients(grads_and_vars=disc_grads)
         disc = {
             'train_op': disc_train_op,
-            'entropy': entropy,
-            'disc_acc': disc_acc,
+            'entropy_loss': entropy,
+            'disc_acc_loss': disc_acc,
             'd_loss': d_loss
         }
     else:
@@ -276,8 +284,10 @@ def get_dae_targets(params, ph, graph, graph_vars):
     if params['disc']['gan-loss'] == 'wgan-gp':
         gen['embed_loss'] = w_dist #0.5 * (w_dist + w_dist_inter)
     elif params['disc']['gan-loss'] == 'gan':
-        gen['embed_loss'] = entropy
-    
+        gen['embed_loss'] = -entropy
+        if params['embedding']['type'] == 'rgaussian':
+            gen['embed_loss'] = gen_gan_loss(graph['real_z_critic'], graph['fake_z_critic'])
+ 
     gen['g_loss'] += gen['embed_loss'] * params['network']['e_m_weight']
 
     # reconstruction loss
@@ -312,16 +322,12 @@ def get_dae_targets(params, ph, graph, graph_vars):
     if len(update_ops) > 0:
         gen['update'] = update_ops
 
-    gen_op = tf.train.AdamOptimizer(params['network']['lr'] * ph['g_lr_decay'])
+    gen_op = tf.train.AdamOptimizer(params['network']['lr'] * ph['g_lr_decay'], beta1=0.5)
     gen_grads = gen_op.compute_gradients(loss=gen['g_loss'],
                                           var_list=graph_vars['gen'])
     gen_train_op = gen_op.apply_gradients(grads_and_vars=gen_grads)
 
-    #global_step_embed = tf.Variable(tf.constant(0))
-    #embed_lr = tf.train.exponential_decay(0.01, global_step_embed, 
-    #                                      int(80 * 2), 0.95, staircase=True)
-    #embed_op = tf.train.GradientDescentOptimizer(embed_lr)
-    embed_op = tf.train.AdamOptimizer(params['embedding']['lr'] * ph['e_lr_decay'])
+    embed_op = tf.train.AdamOptimizer(params['embedding']['lr'] * ph['e_lr_decay'], beta1=0.5)
     embed_grads = embed_op.compute_gradients(loss=gen['g_loss'],
                                             var_list=graph_vars['embed'])
     embed_train_op = embed_op.apply_gradients(grads_and_vars=embed_grads) #, global_step=global_step_embed)

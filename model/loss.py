@@ -21,13 +21,24 @@ def disc_gan_loss(real, fake):
 # TODO: incorporate reparameterization trick for z_real
 def gen_gan_loss(real, fake):
     loss_fake = tf.nn.sigmoid_cross_entropy_with_logits(
-        labels=tf.ones_like(fake_in),
-        logits=fake_in,
-        name='loss_fake')
+        labels=tf.ones_like(fake),
+        logits=fake,
+        name='loss_fake_gen')
     g_loss = tf.reduce_mean(loss_fake)
     return g_loss
 
-
+def disc_gan_loss(real, fake):
+    loss_real = tf.nn.sigmoid_cross_entropy_with_logits(
+        labels=tf.ones_like(real),
+        logits=real,
+        name='loss_real_disc')
+    loss_fake = tf.nn.sigmoid_cross_entropy_with_logits(
+        labels=tf.zeros_like(fake),
+        logits=fake,
+        name='loss_fake_disc')
+    d_loss = tf.reduce_mean(loss_real) + tf.reduce_mean(loss_fake)
+    return d_loss
+ 
 def kl_divergence(pu, log_ps, qu):
     # pu [b, d]
     # ps [b, d]

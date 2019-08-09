@@ -49,7 +49,7 @@ class DAE(object):
 
     def start(self, data_loader=None):
         self.sess.run(tf.global_variables_initializer())
-        if True:
+        if False:
             batch_size = 400
             embed = [ [] for i in range(self.nclass) ]
             for it in range(1000):
@@ -78,7 +78,7 @@ class DAE(object):
                                     self.ph['data_']: inputs_,
                                     self.ph['label_']: labels_,                                    
                                     self.ph['d_lr_decay']: self.d_decay,
-                                    self.ph['is_training']: False,
+                                    self.ph['is_training']: True,
                                     self.ph['stdw']: self.stdw,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                                   })
@@ -239,5 +239,20 @@ class DAE(object):
         #stat.tsne_visualization(inputs, labels, os.path.join(self.logger.dir, 
         #    'epoch{}_{}.png'.format(epoch, domain)), col)
         self.logger.print(epoch, domain + '-stat', log_dict)
+        return self.terminate()
 
+    def terminate(self):
+        if self.killer.kill_now:
+            save_option = input('Save current model (y/[n])?')
+            if save_option == 'y':
+                print('Saved Successfully !')
+                #self.saver_expert.save(self.sess, self.save_expert_dir+'/expert.ckpt')
 
+            kill_option = input('Kill session (y/[n])?')
+            if kill_option == 'y':
+                self.sess.close()
+                #self.writer.close()
+                return True
+            else:
+                self.killer.kill_now = False
+        return False
