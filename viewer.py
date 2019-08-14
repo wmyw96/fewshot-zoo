@@ -151,10 +151,10 @@ b = LogViewer()
 #b.load_log('dae', 'logs/dae.mi1_1ec08_04_16_20/main.log')
 
 ### overall
-#b.load_log('dae', 'logs/dae.mi1_1ec_lr-408_05_15_49/main.log') 
+b.load_log('dae', 'logs/dae.mi1_1ec_lr-408_05_15_49/main.log') 
 #b.load_log('dae', 'logs/[08_06_11_12]dae.mi1_1ec_lr-4_sz3/main.log')
 #b.load_log('dae', 'logs/[08_06_12_03]dae.mi1_1ec_lr-4_sz3/main.log')
-b.load_log('dae', 'logs/[08_06_12_22]dae.mi1_1ec_lr-4_sz3_nt/main.log')
+'''b.load_log('dae', 'logs/[08_06_12_22]dae.mi1_1ec_lr-4_sz3_nt/main.log')
 b.load_log('dae', 'logs/[08_06_18_16]dae.gan_sz/main.log')
 b.load_log('dae', 'logs/[08_06_19_28]dae.gan_sz/main.log')
 b.load_log('dae', 'logs/[08_06_19_56]dae.gan_sz_elr-2/main.log')
@@ -175,6 +175,7 @@ b.load_log('dae', 'logs/[08_08_21_23]dae.gan_fraw_lr2e-4/main.log')
 b.load_log('dae', 'logs/[08_09_10_09]dae.wgan_lr-4/main.log')
 b.load_log('dae', 'logs/[08_09_13_03]dae.wgan_lr-4_dropz7/main.log')
 b.load_log('dae', 'logs/[08_09_14_27]dae.wgan_lr-4_dropz6/main.log')
+b.load_log('dae', 'logs/[08_11_14_00]dae.wgan_lr-4_noem/main.log')'''
 
 ### cls_weight=10
 #b.load_log('dae', 'logs/dae.mi1_1ec_lr-4_c1008_05_16_21/main.log')
@@ -227,10 +228,11 @@ result_guascor = [
     ('dae', 'val-stat', 'cor_mean'),
     ('dae', 'test-stat', 'cor_mean'),
 ]
+
 result_exclass = [
-    ('dae', 'train-stat', 'est_dist'),
-    ('dae', 'val-stat', 'est_dist'),
-    ('dae', 'test-stat', 'est_dist')
+    ('dae', 'train-stat', 'est_cnorm'),
+    ('dae', 'val-stat', 'est_cnorm'),
+    ('dae', 'test-stat', 'est_cnorm')
 ]
 
 if plot == 'dae':
@@ -258,7 +260,9 @@ if plot == 'dae':
 
 
 ############# DVE
-b.load_log('dve', 'logs/dve.im_ec08_04_16_14/main.log')
+b.load_log('dve', 'logs/[08_10_13_29]dve.im_ec/main.log')
+b.load_log('dve', 'logs/[08_10_13_33]dve.im_ec/main.log')
+
 result = [
     ('dve', 'train-stat', 'embed_norm'),
     ('dve', 'train-stat', 'embed_cnorm'),
