@@ -40,6 +40,51 @@ def reg_CNN(inputs, is_training=True):
     return outputs, z
 
 
+def swish1(x, name=''):
+    return tf.multiply(x, tf.nn.sigmoid(x), name=name)
+
+
+def resnet12(inputs, ph):
+    is_training = ph['is_training']
+    embedding_pooled = True
+    with tf.variable_scope('feature_extractor', reuse=tf.AUTO_REUSE):
+        h = inputs
+        num_filters = [64, 128, 256, 512]
+        num_units_in_block = 3
+        for i in range(len(num_filters)):
+            # make shortcut
+            shortcut = slim.conv2d(h, num_outputs=num_filters[i], kernel_size=1, stride=1,
+                                   activation_fn=None,
+                                   scope='shortcut' + str(i), padding='SAME')
+
+            for j in range(3):
+                h = slim.conv2d(h, num_outputs=num_filters[i], kernel_size=3, stride=1,
+                                scope='conv' + str(i) + '_' + str(j), padding='SAME', activation_fn=None)
+                #if beta is not None and gamma is not None:
+                #    with tf.variable_scope('conditional_batch_norm' + str(i) + '_' + str(j), reuse=reuse):
+                #h = get_film_layer(h, beta=beta[i, j], gamma=gamma[i, j])
+                h = tf.layers.batch_normalization(h, training=is_training)
+                if j < (3 - 1):
+                    h = swish1(h, name='activation_' + str(i) + '_' + str(j))
+                h = h + shortcut
+
+            h = swish1(h, name='activation_' + str(i) + '_' + str(num_units_in_block - 1))
+            if i < 3:
+                h = slim.max_pool2d(h, kernel_size=2, stride=2, padding='SAME', scope='max_pool' + str(i))
+
+        if embedding_pooled:
+            kernel_size = h.shape.as_list()[-2]
+            h = slim.avg_pool2d(h, kernel_size=kernel_size, scope='avg_pool')
+        h = slim.flatten(h)
+        print('Output Shape')
+        print(h.get_shape)
+        z = tf.identity(h)
+        net = slim.fully_connected(h, 1024, scope='fc1')
+        net = slim.dropout(net, is_training=is_training, scope='dropout1')  # 0.5 by default
+        outputs = slim.fully_connected(net, 64, activation_fn=None, normalizer_fn=None, scope='fco')
+    return outputs, z
+
+
 def four_block_cnn_encoder(x, h_dim, z_dim, is_training, reuse=False):
     with tf.variable_scope('encoder', reuse=reuse):
         net = conv_block(x, h_dim, is_training, name='conv_1')

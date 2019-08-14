@@ -164,8 +164,8 @@ def get_dae_graph(params, ph):
         if params['disc']['gan-loss'] == 'wgan-gp':
             alpha = tf.random_uniform([batch_size, 1], 0, 1, 
                                       seed=params['train']['seed'])
-            
-            inds = tf.squeeze(tf.random.shuffle(tf.expand_dims(tf.range(batch_size), 1)))
+            inds = tf.range(batch_size)
+            #inds = tf.squeeze(tf.random_shuffle(tf.expand_dims(tf.range(batch_size), 1)))
             fake_z_, label_fake_z_ = graph['fake_z'], graph['one_hot_label']
             real_z_, label_real_z_ = tf.gather(graph['real_z'], inds), tf.gather(graph['one_hot_label'], inds)
 

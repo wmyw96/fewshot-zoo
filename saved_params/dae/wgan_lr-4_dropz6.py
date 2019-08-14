@@ -40,7 +40,7 @@ def generate_params():
         'nclass': nclass,
         'z_dim': z_dim,
         'use_decoder': False,
-        'e_m_weight': 1.0,
+        'e_m_weight': 0.0,
         'lr': lr,
         'rec_weight': 0.0,
         'cls_weight': 1.0,
@@ -56,7 +56,7 @@ def generate_params():
         'init': [init]*2,
         'regularizer': [None]*2,
         'reg_scale': [reg_scale]*2,
-        'dropout':[0.6,1.0]
+        'dropout':[1.0,1.0]
     }
 
     '''decoder = {

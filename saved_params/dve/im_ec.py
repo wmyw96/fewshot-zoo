@@ -44,15 +44,16 @@ def generate_params():
     z_dim = 1600
     #z_dim = 1600
     #h_dim = 256
+    alpha = 0.01
     n_decay = int(80 * (600.0 / batch_size))
     network = {
         'nclass': nclass,
         'fixed': True,
         'z_dim': z_dim,
         'use_decoder': True,
-        'e_m_weight': 0.01,
+        'e_m_weight': alpha,
         'lr': lr,
-        'rec_weight': 0.01,
+        'rec_weight': alpha,
         'cls_weight': 1.0,
         'n_decay': n_decay,
         'decay_weight': 0.95,
@@ -67,7 +68,8 @@ def generate_params():
         'activation': [act] * (nlayer - 1)+ [None],
         'init': [init]*nlayer,
         'regularizer': [None]*nlayer,
-        'reg_scale': [reg_scale]*nlayer
+        'reg_scale': [reg_scale]*nlayer,
+        'dropout': [1.0]*2
     }
 
     decoder = {
@@ -76,7 +78,8 @@ def generate_params():
         'activation': [act] * (nlayer - 1) + [None],
         'init': [init]*nlayer,
         'regularizer': [None]*nlayer,
-        'reg_scale': [reg_scale]*nlayer    
+        'reg_scale': [reg_scale]*nlayer,
+        'dropout':[1.0]*2   
     }
    
     embed = {

@@ -67,7 +67,8 @@ def generate_params():
         'activation': [act] * (nlayer - 1)+ [None],
         'init': [init]*nlayer,
         'regularizer': [None]*nlayer,
-        'reg_scale': [reg_scale]*nlayer
+        'reg_scale': [reg_scale]*nlayer,
+        'dropout': [1.0]*2
     }
 
     decoder = {
@@ -76,7 +77,8 @@ def generate_params():
         'activation': [act] * (nlayer - 1) + [None],
         'init': [init]*nlayer,
         'regularizer': [None]*nlayer,
-        'reg_scale': [reg_scale]*nlayer    
+        'reg_scale': [reg_scale]*nlayer,
+        'dropout': [1.0]*2    
     }
    
     embed = {

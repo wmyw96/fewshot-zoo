@@ -85,7 +85,7 @@ elif len(params['data']['split']) == 3:
 # start training
 if args.type == 'train':
     if args.pretrain_dir is not None:
-        agent.start(args.pretrain_dir, train)
+        agent.start(train, args.pretrain_dir)
     else:
         agent.start(train)
     done = False

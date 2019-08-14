@@ -14,17 +14,17 @@ def generate_params():
 
     pretrain = {
         'lr': 1e-3,
-        'batch_size': 400,
-        'num_epoches': 50,
-        'iter_per_epoch': 100,
+        'batch_size': 64,
+        'num_epoches': 120,
+        'iter_per_epoch': 400,
     }
 
-    batch_size = 600
+    batch_size = 128
 
     train = {
         'batch_size': batch_size,
         'num_epoches': 100,
-        'iter_per_epoch': 120,
+        'iter_per_epoch': 600 * 64 // batch_size,
         'valid_interval': 1,
     }
 
@@ -32,7 +32,7 @@ def generate_params():
         'n_way': [5, 5],
         'nq': 15,
         'shot': [5, 1],
-        'num_episodes': 400,
+        'num_episodes': 600,
     }
 
     lr = 1e-2
@@ -40,7 +40,8 @@ def generate_params():
     init = 'xavier'
     act = 'relu'
     h_dim = 1600
-    z_dim = 1600
+    z_dim = 512
+    alpha = 5e-3
     #z_dim = 1600
     #h_dim = 256
     n_decay = int(80 * (600.0 / batch_size))
@@ -49,13 +50,13 @@ def generate_params():
         'fixed': True,
         'z_dim': z_dim,
         'use_decoder': True,
-        'e_m_weight': 0.01,
+        'e_m_weight': alpha,
         'lr': lr,
-        'rec_weight': 0.01,
+        'rec_weight': alpha,
         'cls_weight': 1.0,
         'n_decay': n_decay,
         'decay_weight': 0.95,
-        'metric': 'l2'
+        'metric': 'cos'
     }
     
     nlayer = 2
@@ -66,7 +67,8 @@ def generate_params():
         'activation': [act] * (nlayer - 1)+ [None],
         'init': [init]*nlayer,
         'regularizer': [None]*nlayer,
-        'reg_scale': [reg_scale]*nlayer
+        'reg_scale': [reg_scale]*nlayer,
+        'dropout':[1.0]*2
     }
 
     decoder = {
@@ -75,7 +77,8 @@ def generate_params():
         'activation': [act] * (nlayer - 1) + [None],
         'init': [init]*nlayer,
         'regularizer': [None]*nlayer,
-        'reg_scale': [reg_scale]*nlayer    
+        'reg_scale': [reg_scale]*nlayer,
+        'dropout':[1.0]*2   
     }
    
     embed = {

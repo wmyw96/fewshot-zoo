@@ -29,10 +29,10 @@ def generate_params():
 
     lr = 1e-4
     reg_scale = 1e-8
-    init = 'he'
-    act = 'leaky_relu'
+    init = 'xavier'
+    act = 'relu'
     h_dim = 1600
-    z_dim = 1600
+    z_dim = 512
     #z_dim = 1600
     #h_dim = 256
 
@@ -56,7 +56,7 @@ def generate_params():
         'init': [init]*2,
         'regularizer': [None]*2,
         'reg_scale': [reg_scale]*2,
-        'dropout':[0.6,1.0]
+        'dropout':[1.0,1.0]
     }
 
     '''decoder = {
@@ -87,7 +87,7 @@ def generate_params():
     }
 
     embed = {
-        'lr': lr,
+        'lr': 3,
         'n_decay': 20,
         'weight_decay': 1.0,
         'type': 'gaussian',
