@@ -87,16 +87,15 @@ def get_daie_ph(params):
                                 shape=[None, None],
                                 name='label')
     ph['stdw'] = tf.placeholder(dtype=tf.float32, shape=[], name='stdw')
-    ph['cd_embed'] = tf.placeholder(dtype=tf.float32, shape=[params['data']['nclass'], params['network']['z_dim']], name='cd_embed')
 
     return ph
 
-def get_dae_graph(params, ph):
+def get_daie_graph(params, ph):
     graph = {}
     if params['data']['dataset'] == 'mini-imagenet':
         rx = ph['data']
         with tf.variable_scope('pretrain'):
-            graph['pt_logits'], graph['x'] = resnet12(rx, ph)
+            graph['pt_logits'], graph['x'] = daie_pretrain_factory(rx, ph, params['pretrain'])
         x = graph['x']
         
     else:
@@ -118,7 +117,7 @@ def get_dae_graph(params, ph):
         # For evaluation
         ns, nq, n_way = ph['ns'], ph['nq'], ph['n_way']
 
-        with tf.variable_scope('z', reuse=False):
+        with tf.variable_scope('z-embed', reuse=False):
             if params['z']['type'] == 'gaussian':
                 nclass = params['network']['nclass']
                 z_dim = params['network']['z_dim']
@@ -126,11 +125,14 @@ def get_dae_graph(params, ph):
                 graph['mu'] = \
                     tf.get_variable('mu', [nclass, z_dim],
                                     initializer=tf.random_normal_initializer)
+                print(graph['mu'])
                 real_z_mean = tf.gather(graph['mu'], ph['label'], axis=0)
                 noise = tf.random_normal([batch_size, z_dim], 0.0, stddev, 
                                          seed=params['train']['seed'])
                 real_z = real_z_mean + noise
                 graph['real_z'] = real_z
+            else:
+                raise ValueError('Not Implemented')
 
         with tf.variable_scope('z2e', reuse=False):
             graph['real_e'] = daie_network_factory(graph['real_z'], ph, params['z2e'])
@@ -155,25 +157,25 @@ def get_dae_graph(params, ph):
 
         # Discriminator
         with tf.variable_scope('disc-e', reuse=False):
-            graph['fake_e_critic'] = dae_disc_factory(graph['fake_e'], graph['one_hot_label'], 
+            graph['fake_e_critic'] = daie_disc_factory(graph['fake_e'], graph['one_hot_label'], 
                                                       ph, params['disc'])
         with tf.variable_scope('disc-e', reuse=True):
-            graph['real_e_critic'] = dae_disc_factory(graph['real_e'], graph['one_hot_label'], 
+            graph['real_e_critic'] = daie_disc_factory(graph['real_e'], graph['one_hot_label'], 
                                                       ph, params['disc'])
 
         if params['disc']['gan-loss'] == 'wgan-gp':
             alpha = tf.random_uniform([batch_size, 1], 0, 1, 
                                       seed=params['train']['seed'])
             
-            inds = tf.squeeze(tf.random.shuffle(tf.expand_dims(tf.range(batch_size), 1)))
+            inds = tf.squeeze(tf.random_shuffle(tf.expand_dims(tf.range(batch_size), 1)))
             fake_e_, label_fake_e_ = graph['fake_e'], graph['one_hot_label']
             real_e_, label_real_e_ = tf.gather(graph['real_e'], inds), tf.gather(graph['one_hot_label'], inds)
 
             hat_e_ = fake_e_ * alpha + (1 - alpha) * real_e_
-            label_hat_z_ = label_fake_e_ * alpha + (1 - alpha) * label_real_e_
+            label_hat_e_ = label_fake_e_ * alpha + (1 - alpha) * label_real_e_
             with tf.variable_scope('disc-e', reuse=True):
                 graph['hat_e_critic'], graph['hat_e'] = \
-                                        dae_disc_factory(hat_z_, label_hat_z_,
+                                        daie_disc_factory(hat_e_, label_hat_e_,
                                                          ph, params['disc'], True)
 
     return graph
@@ -184,7 +186,7 @@ def show_params(domain, var_list):
     for var in var_list:
         print('{}: {}'.format(var.name, var.shape))
 
-def get_dae_vars(params, ph, graph):
+def get_daie_vars(params, ph, graph):
     pretrain_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='pretrain')
     saved_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='daie')
     disc_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='daie/disc-e')
@@ -192,7 +194,7 @@ def get_dae_vars(params, ph, graph):
     e2z_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='daie/z2e')
     z2e_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='daie/e2z')
     network_vars = x2e_vars + e2z_vars + z2e_vars
-    z_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='dae/z')
+    z_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='daie/z-embed')
 
     graph_vars = {
         'disc': disc_vars,
@@ -210,7 +212,7 @@ def get_dae_vars(params, ph, graph):
     return graph_vars, saved_vars, pretrain_vars
 
 
-def get_dae_targets(params, ph, graph, graph_vars):
+def get_daie_targets(params, ph, graph, graph_vars):
     # disc loss
     if params['disc']['gan-loss'] == 'wgan-gp':
         w_dist = wgan_gp_wdist(graph['real_e_critic'], graph['fake_e_critic'])
@@ -265,9 +267,9 @@ def get_dae_targets(params, ph, graph, graph_vars):
     gen['g_loss'] += gen['embed_loss'] * params['network']['e_m_weight']
 
     # reconstruction loss
-    if params['network']['use_decoder']:
-        gen['rec_loss'] = tf.reduce_mean(tf.abs(ph['real_z_hat'] - graph['real_z']))
-        gen['g_loss'] += gen['rec_loss'] * params['network']['rec_weight']
+    #if params['network']['use_decoder']:
+    gen['rec_loss'] = tf.reduce_mean(tf.square(graph['real_z_hat'] - graph['real_z']))
+    gen['g_loss'] += gen['rec_loss'] * params['network']['rec_weight']
     
     stddev = params['z']['stddev'] * ph['stdw']
     # classfication loss
@@ -286,6 +288,7 @@ def get_dae_targets(params, ph, graph, graph_vars):
     if params['network']['update_pretrain']:
         pretrain_loss = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], 
             logits=graph['pt_logits'], dim=1)
+        pretrain_loss = tf.reduce_mean(pretrain_loss)
         pretrain_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(graph['pt_logits'], 1), ph['label']), tf.float32))
         pretrain_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='pretrain')
         gen['update'] = pretrain_update_ops
@@ -294,12 +297,12 @@ def get_dae_targets(params, ph, graph, graph_vars):
         gen['g_loss'] += gen['pretrain_ent_loss'] * params['network']['pretrain_weight']
 
     gen_op = tf.train.AdamOptimizer(params['network']['lr'] * ph['g_lr_decay'], beta1=0.5)
-    if params['network']['update_pretrain']:
+    if not params['network']['update_pretrain']:
         gen_grads = gen_op.compute_gradients(loss=gen['g_loss'],
                                               var_list=graph_vars['gen'])
     else:
         gen_grads = gen_op.compute_gradients(loss=gen['g_loss'],
-                                              var_list=graph_vars['gen'] + graph_vars['pretrain'])
+                                              var_list=graph_vars['gen'] + graph_vars['backbone'])
 
     gen_train_op = gen_op.apply_gradients(grads_and_vars=gen_grads)
 
@@ -314,10 +317,11 @@ def get_dae_targets(params, ph, graph, graph_vars):
     if params['data']['dataset'] == 'mini-imagenet':
         pretrain_loss = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], 
             logits=graph['pt_logits'], dim=1)
+        pretrain_loss = tf.reduce_mean(pretrain_loss)
         pretrain_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(graph['pt_logits'], 1), ph['label']), tf.float32))
         pretrain_op = tf.train.AdamOptimizer(params['pretrain']['lr'] * ph['p_lr_decay'])
         pretrain_grads = pretrain_op.compute_gradients(loss=pretrain_loss,
-                                          var_list=graph_vars['pretrain'])
+                                          var_list=graph_vars['backbone'])
         pretrain_train_op = pretrain_op.apply_gradients(grads_and_vars=pretrain_grads)
         pretrain_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='pretrain')
         pretrain = {
@@ -334,11 +338,11 @@ def get_dae_targets(params, ph, graph, graph_vars):
         'gen': gen,
         'disc': disc,
         'pretrain': pretrain,
+        'pretrain_eval': pretrain_eval,
         'eval': {
             'acc': graph['eval_acc'],
             '64-acc': acc
         },
-        'pretrain': pretrain
     }
 
     return targets

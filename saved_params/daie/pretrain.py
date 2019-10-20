@@ -3,7 +3,7 @@ def generate_params():
     nclass = 64
 
     data = {
-        'rot': False,
+        'rot': True,
         'dataset': 'mini-imagenet',
         'data_dir': '../../data/mini-imagenet/',
         'split_dir': './splits/mini-imagenet',
@@ -15,7 +15,7 @@ def generate_params():
     pretrain = {
         'type': '4blockcnn',
         'lr': 1e-3,
-        'batch_size': 64,
+        'batch_size': 64 * 2,
         'num_epoches': 120,
         'iter_per_epoch': 400,
     }
@@ -36,10 +36,10 @@ def generate_params():
 
     lr = 1e-4
     reg_scale = 1e-8
-    init = 'he'
+    init = 'xavier'
     act = 'relu'
     h_dim = 1600
-    e_dim = 1024
+    e_dim = 512
     z_dim = 512
     #z_dim = 1600
     #h_dim = 256
@@ -48,9 +48,9 @@ def generate_params():
         'update_pretrain': True,
         'nclass': nclass,
         'use_decoder': False,
-        #'e_m_weight': 1.0,
+        'e_m_weight': 1.0,
         'lr': lr,
-        'rec_weight': 10.0,
+        'rec_weight': 1.0,
         'z_dim': z_dim,
         'pretrain_weight': 1.0,
         'cls_weight': 1.0,
@@ -66,32 +66,30 @@ def generate_params():
         'init': [init]*2,
         'regularizer': [None]*2,
         'reg_scale': [reg_scale]*2,
-        'dropout':[1.0]*2    
+        'dropout':[1.0,1.0]    
     }
-
-    gl = 3
 
     z2e = {
         'type': 'fc',
-        'num_hidden': [h_dim]*(gl-1) + [e_dim],
-        'activation': [act]*(gl-1) + [None],
-        'init': [init]*gl,
-        'regularizer': [None]*gl,
-        'reg_scale': [reg_scale]*gl,
-        'dropout':[1.0]*gl
+        'num_hidden': [h_dim]*1 + [e_dim],
+        'activation': [act]*1 + [None],
+        'init': [init]*2,
+        'regularizer': [None]*2,
+        'reg_scale': [reg_scale]*2,
+        'dropout':[1.0,1.0]
     }
 
     e2z = {
         'type': 'fc',
-        'num_hidden': [h_dim]*(gl-1) + [z_dim],
-        'activation': [act]*(gl-1) + [None],
-        'init': [init]*gl,
-        'regularizer': [None]*gl,
-        'reg_scale': [reg_scale]*gl,
-        'dropout':[1.0]*gl
+        'num_hidden': [h_dim]*1 + [z_dim],
+        'activation': [act]*1 + [None],
+        'init': [init]*2,
+        'regularizer': [None]*2,
+        'reg_scale': [reg_scale]*2,
+        'dropout':[1.0,1.0]
     }
 
-    dlayer = 4
+    dlayer = 3
     disc = {
         'lr': lr,
         'n_decay': 50,

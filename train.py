@@ -13,6 +13,7 @@ from utils import *
 from agents.dae_agent import DAE
 from agents.supportquery_agent import SupportQueryAgent
 from agents.dve_agent import DVE
+from agents.daie_agent import DAIE
 from data.dataset import load_dataset
 from agents.utils import *
 
@@ -66,6 +67,8 @@ elif args.model == 'protonet':
     agent = SupportQueryAgent(params, logger, args.gpu)
 elif args.model == 'dve':
     agent = DVE(params, logger, args.gpu)
+elif args.model == 'daie':
+    agent = DAIE(params, logger, args.gpu)
 else:
     raise NotImplementedError
 

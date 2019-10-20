@@ -22,7 +22,7 @@ class DAIE(object):
         self.params = params
 
         # Build computation graph for the DDPG agent
-        self.ph, self.graph, self.targets, self.save_vars, self.pretrain_vars = build_dae_model(params)
+        self.ph, self.graph, self.targets, self.save_vars, self.pretrain_vars = build_daie_model(params)
         self.gpu = gpu
         self.epoch = 0
 
@@ -103,7 +103,7 @@ class DAIE(object):
                                     self.ph['data_']: inputs_,
                                     self.ph['label_']: labels_,                                    
                                     self.ph['d_lr_decay']: self.d_decay,
-                                    self.ph['is_training']: True,
+                                    self.ph['is_training']: False,
                                     self.ph['stdw']: self.stdw,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                                   })
@@ -143,8 +143,8 @@ class DAIE(object):
     
     def take_step(self):
         self.epoch += 1
-        if 'adaptive_std' in self.params['embedding']:
-            self.stdw -= self.params['embedding']['adaptive_std']['decay']  
+        if 'adaptive_std' in self.params['z']:
+            self.stdw -= self.params['z']['adaptive_std']['decay']  
             print('Stddev decay, current = {}'.format(self.stdw))      
         if self.epoch % self.params['network']['n_decay'] == 0:
             self.g_decay *= self.params['network']['weight_decay']
@@ -152,8 +152,8 @@ class DAIE(object):
         if self.epoch % self.params['disc']['n_decay'] == 0:
             self.d_decay *= self.params['disc']['weight_decay']
             print('D Decay, Current = {}'.format(self.d_decay))
-        if self.epoch % self.params['embedding']['n_decay'] == 0:
-            self.e_decay *= self.params['embedding']['weight_decay']
+        if self.epoch % self.params['z']['n_decay'] == 0:
+            self.e_decay *= self.params['z']['weight_decay']
             print('E Decay, Current = {}'.format(self.e_decay))
         
     def print_log(self, epoch):
