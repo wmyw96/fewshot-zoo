@@ -63,6 +63,38 @@ class DAE(object):
             embed = np.concatenate(embed, 0)
             self.sess.run(self.targets['assign_embed'], feed_dict={self.ph['cd_embed']: embed})
 
+    def pretrain(self, data_loader, test_loader, save_dir):
+        self.sess.run(tf.global_variables_initializer())
+        batch_size = self.params['pretrain']['batch_size']
+        for epoch in range(self.params['pretrain']['num_epoches']):
+            accs = []
+            for it in range(self.params['pretrain']['iter_per_epoch']):
+                inputs, labels = data_loader.next_batch(batch_size)
+                fetch = self.sess.run(self.targets['pretrain'],
+                                      feed_dict={
+                                        self.ph['data']: inputs,
+                                        self.ph['label']: labels,
+                                        self.ph['p_lr_decay']: 1.0,
+                                        self.ph['is_training']: True,
+                                        self.ph['p_y_prior']: data_loader.get_weight()
+                                      })
+                accs.append(fetch['acc'])
+
+            test_accs = []
+            for it in range(self.params['pretrain']['test_iter']):
+                inputs, labels = test_loader.next_batch(batch_size)
+                fetch = self.sess.run(self.targets['pretrain_eval'],
+                                      feed_dict={
+                                        self.ph['data']: inputs,
+                                        self.ph['label']: labels,
+                                        self.ph['p_lr_decay']: 1.0,
+                                        self.ph['is_training']: True,
+                                        self.ph['p_y_prior']: data_loader.get_weight()
+                                      })
+                test_accs.append(fetch['acc'])
+            print('Pretrain Epoch {}: Train Accuracy = {}, Test Accuracy = {}'.format(epoch, np.mean(accs), np.mean(test_accs)))
+            self.save_pretrain.save(self.sess, os.path.join(save_dir, 'pretrain.ckpt'))
+
     def train_iter(self, data_loader):
         n_critic = self.params['disc']['n_critic']
         batch_size = self.params['train']['batch_size']

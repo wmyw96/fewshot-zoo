@@ -6,6 +6,15 @@ from model.network import *
 from model.loss import *
 
 
+def dae_pretrain_factory(inp, ph, params, reuse=True):
+    if params['type'] == '4blockcnn':
+        return reg_CNN(inp, ph['is_training'])
+    elif params['type'] == 'resnet12':
+        return resnet12(inp, ph)
+    else:
+        raise NotImplementedError
+
+
 def dae_encoder_factory(inp, ph, params, reuse=True):
     if params['type'] == 'fc':
         return feedforward(inp, ph['is_training'], params, 'fc')
@@ -88,7 +97,15 @@ def get_dae_ph(params):
 
 def get_dae_graph(params, ph):
     graph = {}
-    x = ph['data']            # [b, *x.shape]
+    if params['data']['dataset'] == 'mini-imagenet':
+        rx = ph['data']
+        with tf.variable_scope('pretrain'):
+            graph['pt_logits'], graph['x'] = dae_pretrain_factory(rx, ph, params['pretrain'])
+        x = graph['x']
+        
+    else:
+        x = graph['x'] = ph['data']
+
     # !TODO: remove batch_size dependency
     batch_size = params['train']['batch_size']
 
@@ -128,19 +145,6 @@ def get_dae_graph(params, ph):
                 real_z = real_z_mean + noise
                 graph['real_z'] = real_z
                 graph['fake_z'] = z
-            elif params['embedding']['type'] == 'rgaussian':
-                nclass = params['network']['nclass']
-                z_dim = params['network']['z_dim']
-
-                graph['mu'] = \
-                    tf.get_variable('mu', [nclass, z_dim],
-                                    initializer=tf.random_normal_initializer)
-                real_z_mean = tf.gather(graph['mu'], ph['label'], axis=0)
-                noise = tf.random_normal([batch_size, z_dim], 0.0, stddev,
-                                         seed=params['train']['seed'])
-                real_z = noise
-                graph['real_z'] = real_z
-                graph['fake_z'] = z - real_z_mean
             
         graph['embed'] = graph['mu']
         
@@ -298,20 +302,39 @@ def get_dae_targets(params, ph, graph, graph_vars):
     embed_op = tf.train.AdamOptimizer(params['embedding']['lr'] * ph['e_lr_decay'], beta1=0.5)
     embed_grads = embed_op.compute_gradients(loss=gen['g_loss'],
                                             var_list=graph_vars['embed'])
-    embed_train_op = embed_op.apply_gradients(grads_and_vars=embed_grads) #, global_step=global_step_embed)
+    embed_train_op = embed_op.apply_gradients(grads_and_vars=embed_grads) 
 
     gen['train_gen'] = gen_train_op
     gen['train_embed'] = embed_train_op
 
+    if params['data']['dataset'] == 'mini-imagenet':
+        pretrain_loss = tf.nn.softmax_cross_entropy_with_logits(labels=graph['one_hot_label'], 
+            logits=graph['pt_logits'], dim=1)
+        pretrain_loss = tf.reduce_mean(pretrain_loss)
+        pretrain_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(graph['pt_logits'], 1), ph['label']), tf.float32))
+        pretrain_op = tf.train.AdamOptimizer(params['pretrain']['lr'] * ph['p_lr_decay'])
+        pretrain_grads = pretrain_op.compute_gradients(loss=pretrain_loss,
+                                          var_list=graph_vars['backbone'])
+        pretrain_train_op = pretrain_op.apply_gradients(grads_and_vars=pretrain_grads)
+        pretrain_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='pretrain')
+        pretrain = {
+            'train': pretrain_train_op,
+            'update': pretrain_update_ops,
+            'acc': pretrain_acc,
+        }
+        pretrain_eval = {'acc': pretrain_acc}
+    else:
+        pretrain = {}
+        pretrain_eval = {}
+
     targets = {
         'gen': gen,
         'disc': disc,
+        'pretrain': pretrain,
+        'pretrain_eval': pretrain_eval,
         'eval': {
             'acc': graph['eval_acc'],
             '64-acc': acc
-        },
-        'assign_embed': {
-            'assign': tf.assign(graph['mu'], ph['cd_embed'])
         }
     }
 

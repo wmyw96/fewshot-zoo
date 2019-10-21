@@ -28,6 +28,18 @@ def print_log(title, epoch, loss):
     print(print_str)
 
 
+def split_dataset(data, ratio):
+    inputs, labels, nclass = data.inputs, data.labels, data.nclass
+    ndata = inputs.shape[0]
+    ind = np.random.permutation(ndata)
+    inputs = inputs[ind, :]
+    labels = labels[ind, :]
+    melody = int(ndata * ratio)
+    train = classfication_dataset(inputs[:melody, :], labels[:melody], nclass)
+    test = classfication_dataset(inputs[melody:, :], labels[melody:], nclass)
+    return train, test
+
+
 class LogWriter(object):
     def __init__(self, dir, name):
         self.dir = dir

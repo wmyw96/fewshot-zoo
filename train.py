@@ -120,4 +120,5 @@ if args.type == 'train':
         if done:
             break
 elif args.type == 'pretrain':
-    agent.pretrain(train, args.pretrain_dir)
+    train, test = split_dataset(train, 0.7)
+    agent.pretrain(train, test, args.pretrain_dir)

@@ -151,7 +151,9 @@ b = LogViewer()
 #b.load_log('dae', 'logs/dae.mi1_1ec08_04_16_20/main.log')
 
 ### overall
-b.load_log('dae', 'logs/dae.mi1_1ec_lr-408_05_15_49/main.log') 
+b.load_log('dae', 'logs/[08_15_12_39]daie.wgan/main.log')
+
+#b.load_log('dae', 'logs/dae.mi1_1ec_lr-408_05_15_49/main.log') 
 #b.load_log('dae', 'logs/[08_06_11_12]dae.mi1_1ec_lr-4_sz3/main.log')
 #b.load_log('dae', 'logs/[08_06_12_03]dae.mi1_1ec_lr-4_sz3/main.log')
 '''b.load_log('dae', 'logs/[08_06_12_22]dae.mi1_1ec_lr-4_sz3_nt/main.log')
