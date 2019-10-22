@@ -34,6 +34,7 @@ def reg_CNN(inputs, is_training=True):
         net = slim.max_pool2d(net, [2, 2], scope='pool4')
         net = slim.flatten(net, scope='flatten')
         z = tf.identity(net)
+        net = slim.dropout(net, is_training=is_training, scope='dropout0')  # 0.5 by default
         net = slim.fully_connected(net, 1024, scope='fc1')
         net = slim.dropout(net, is_training=is_training, scope='dropout1')  # 0.5 by default
         outputs = slim.fully_connected(net, 64, activation_fn=None, normalizer_fn=None, scope='fco')

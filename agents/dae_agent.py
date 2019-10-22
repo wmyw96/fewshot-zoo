@@ -22,7 +22,7 @@ class DAE(object):
         self.params = params
 
         # Build computation graph for the DDPG agent
-        self.ph, self.graph, self.targets, self.save_vars = build_dae_model(params)
+        self.ph, self.graph, self.targets, self.save_vars, self.pretrain_vars = build_dae_model(params)
         self.gpu = gpu
         self.epoch = 0
 
@@ -41,7 +41,8 @@ class DAE(object):
         self.e_decay = 1.0
         self.best_valid = [0.0] * len(self.params['test']['shot'])
         self.test_perf = [0.0] * len(self.params['test']['shot'])
-
+        if params['data']['dataset'] == 'mini-imagenet':
+            self.save_pretrain = tf.train.Saver(var_list=self.pretrain_vars)
         self.losses = {}
         self.nclass = params['data']['nclass']
         self.save_model = tf.train.Saver(var_list=self.save_vars)
@@ -74,7 +75,6 @@ class DAE(object):
                                       feed_dict={
                                         self.ph['data']: inputs,
                                         self.ph['label']: labels,
-                                        self.ph['p_lr_decay']: 1.0,
                                         self.ph['is_training']: True,
                                         self.ph['p_y_prior']: data_loader.get_weight()
                                       })
@@ -87,14 +87,15 @@ class DAE(object):
                                       feed_dict={
                                         self.ph['data']: inputs,
                                         self.ph['label']: labels,
-                                        self.ph['p_lr_decay']: 1.0,
                                         self.ph['is_training']: True,
                                         self.ph['p_y_prior']: data_loader.get_weight()
                                       })
                 test_accs.append(fetch['acc'])
             print('Pretrain Epoch {}: Train Accuracy = {}, Test Accuracy = {}'.format(epoch, np.mean(accs), np.mean(test_accs)))
             self.save_pretrain.save(self.sess, os.path.join(save_dir, 'pretrain.ckpt'))
-
+            if self.killer.kill_now:
+                return True
+    
     def train_iter(self, data_loader):
         n_critic = self.params['disc']['n_critic']
         batch_size = self.params['train']['batch_size']

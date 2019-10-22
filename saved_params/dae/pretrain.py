@@ -15,7 +15,7 @@ def generate_params():
     }
 
     pretrain = {
-        'type': '4blockcnn',
+        'type': 'resnet12',
         'lr': 1e-3,
         'batch_size': 64 * 2,
         'num_epoches': 120,
@@ -112,6 +112,7 @@ def generate_params():
         'network': network,
         'encoder': encoder,
         #'decoder': decoder,
+        'pretrain': pretrain,
         'disc': disc,
         'embedding': embed
     }

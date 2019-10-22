@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from data.base import *
 
 
 def update_loss(fetch, loss, need_loss=True):

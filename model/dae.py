@@ -195,18 +195,21 @@ def get_dae_vars(params, ph, graph):
     decoder_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='dae/decoder')
     network_vars = encoder_vars + decoder_vars
     embed_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='dae/embed')
+    backbone_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='pretrain')
 
     graph_vars = {
         'disc': disc_vars,
         'encoder': encoder_vars,
         'decoder': decoder_vars,
         'embed': embed_vars,
-        'gen': network_vars
+        'gen': network_vars,
+        'backbone': backbone_vars
     }
     show_params('disc', disc_vars)
     show_params('gen', network_vars)
     show_params('embed', embed_vars)
-    return graph_vars, saved_vars
+    show_params('backbone', backbone_vars)
+    return graph_vars, saved_vars, backbone_vars
 
 
 def get_dae_targets(params, ph, graph, graph_vars):
@@ -312,7 +315,7 @@ def get_dae_targets(params, ph, graph, graph_vars):
             logits=graph['pt_logits'], dim=1)
         pretrain_loss = tf.reduce_mean(pretrain_loss)
         pretrain_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(graph['pt_logits'], 1), ph['label']), tf.float32))
-        pretrain_op = tf.train.AdamOptimizer(params['pretrain']['lr'] * ph['p_lr_decay'])
+        pretrain_op = tf.train.AdamOptimizer(params['pretrain']['lr']) #* ph['p_lr_decay'])
         pretrain_grads = pretrain_op.compute_gradients(loss=pretrain_loss,
                                           var_list=graph_vars['backbone'])
         pretrain_train_op = pretrain_op.apply_gradients(grads_and_vars=pretrain_grads)
@@ -344,8 +347,8 @@ def build_dae_model(params):
     ph = get_dae_ph(params)
 
     graph = get_dae_graph(params, ph)
-    graph_vars, saved_vars = get_dae_vars(params, ph, graph)
+    graph_vars, saved_vars, pretrain_vars = get_dae_vars(params, ph, graph)
     targets = get_dae_targets(params, ph, graph, graph_vars)
 
-    return ph, graph, targets, saved_vars
+    return ph, graph, targets, saved_vars, pretrain_vars
 
