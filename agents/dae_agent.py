@@ -103,13 +103,15 @@ class DAE(object):
         for i in range(n_critic):
             inputs, labels = data_loader.next_batch(batch_size)
             inputs_, labels_ = data_loader.next_batch(batch_size)
+            inputs_sm, labels_sm = data_loader.same_class_batch(batch_size, labels)
 
             fetch = self.sess.run(self.targets['disc'], 
                                   feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
                                     self.ph['data_']: inputs_,
-                                    self.ph['label_']: labels_,                                    
+                                    self.ph['label_']: labels_,
+                                    self.ph['data_same_label']: inputs_sm,
                                     self.ph['d_lr_decay']: self.d_decay,
                                     self.ph['is_training']: True,
                                     self.ph['stdw']: self.stdw,
@@ -119,18 +121,30 @@ class DAE(object):
 
         inputs, labels = data_loader.next_batch(batch_size)
         inputs_, labels_ = data_loader.next_batch(batch_size)
+        inputs_sm, labels_sm = data_loader.same_class_batch(batch_size, labels)
+
         fetch = self.sess.run(self.targets['gen'], 
                               feed_dict={
                                     self.ph['data']: inputs,
                                     self.ph['label']: labels,
                                     self.ph['data_']: inputs_,
                                     self.ph['label_']: labels_,
+                                    self.ph['data_same_label']: inputs_sm,
                                     self.ph['g_lr_decay']: self.g_decay,
                                     self.ph['e_lr_decay']: self.e_decay,
                                     self.ph['is_training']: True,
                                     self.ph['stdw']: self.stdw,
                                     self.ph['p_y_prior']: data_loader.get_weight()
                               })
+        # TODO! Simple Check inputs_sm category is correct !
+        a = self.sess.run(self.targets['pretrain_eval']['acc'], 
+                          feed_dict={self.ph['data']: inputs_sm,
+                                     self.ph['labels']: labels,
+                                     self.ph['is_training']: False,
+                                     self.ph['p_y_prior']: data_loader.get_weight()})
+        print('Legacy: accuracy = {}'.format(a))
+
+
         update_loss(fetch, self.losses)
         self.step += 1
 

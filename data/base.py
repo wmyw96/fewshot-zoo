@@ -75,6 +75,16 @@ class classfication_dataset(object):
         self.pointer = end
         return inputs, labels.squeeze()
 
+    def same_class_batch(self, labels):
+        inputs = []
+        for i in range(labels.shape[0]):
+            clsid = labels[i]
+            ind = int(np.random.permutation(self.cb_index[clsid].shape[0])[0])
+            #print(self.labels[self.cb_index[clsid][ind], :] == clsid)
+            inputs.append(self.inputs[self.cb_index[clsid][ind], :])
+        inputs = np.array(inputs)
+        return inputs, labels
+
     def get_weight(self):
         return self.weight
 

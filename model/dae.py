@@ -15,7 +15,7 @@ def dae_pretrain_factory(inp, ph, params, reuse=True):
         raise NotImplementedError
 
 
-def dae_encoder_factory(inp, ph, params, reuse=True):
+def dae_encoder_factory(inp, ph, params):
     if params['type'] == 'fc':
         return feedforward(inp, ph['is_training'], params, 'fc')
     elif params['type'] == '4blockcnn':
@@ -59,6 +59,9 @@ def get_dae_ph(params):
     ph['data'] = tf.placeholder(dtype=tf.float32, 
                                 shape=[None] + params_d['x_size'],
                                 name='x')
+    ph['data_same_label'] = tf.placeholder(dtype=tf.float32,
+                                shape=[None] + params_d['x_size'],
+                                name='x_sl')
     ph['label'] = tf.placeholder(dtype=tf.int64,
                                 shape=[None],
                                 name='label')
@@ -97,37 +100,45 @@ def get_dae_ph(params):
 
 def get_dae_graph(params, ph):
     graph = {}
-    if params['data']['dataset'] == 'mini-imagenet':
-        rx = ph['data']
-        with tf.variable_scope('pretrain'):
-            graph['pt_logits'], graph['x'] = dae_pretrain_factory(rx, ph, params['pretrain'])
-        x = graph['x']
-        
-    else:
-        x = graph['x'] = ph['data']
 
     # !TODO: remove batch_size dependency
     batch_size = params['train']['batch_size']
-
     graph['one_hot_label'] = tf.one_hot(ph['label'], params['data']['nclass'])  # [b, K]
-    graph['one_hot_label_'] = tf.one_hot(ph['label_'], params['data']['nclass'])  # [b, K]
+
+    if params['data']['dataset'] == 'mini-imagenet':
+        rx = ph['data']
+        with tf.variable_scope('pretrain', reuse=False):
+            graph['pt_logits'], graph['x'] = dae_pretrain_factory(rx, ph, params['pretrain'])
+        x = graph['x']
+        
+        if 'mixup' in params['network']:
+            lamb = tf.random_uniform([batch_size, 1], 0, 1, 
+                                     seed=params['train']['seed'])
+            rmx = ph['data'] * lamb + (1 - lamb) * ph['data_same_label']
+            with tf.variable_scope('pretrain', reuse=True):
+                graph['ptm_logits'], graph['xm'] = dae_pretrain_factory(rmx, ph, params['pretrain'])
+            mx = graph['xm']
+            batch_size *= 2
+            graph['one_hot_label'] = tf.concat([graph['one_hot_label'], graph['one_hot_label']], 0)
+    else:
+        x = graph['x'] = ph['data']
+
     stddev = params['embedding']['stddev'] * ph['stdw']
 
     with tf.variable_scope('dae', reuse=False):
         # Encoder
         # Fake Samples
         with tf.variable_scope('encoder', reuse=False):
-            z = dae_encoder_factory(x, ph, params['encoder'], False)
+            z = dae_encoder_factory(x, ph, params['encoder'])
             graph['z'] = z
+
+        if 'mixup' in params['network']:
+            with tf.variable_scope('encoder', reuse=True):
+                mz = dae_encoder_factory(mx, ph, params['encoder'])
+                graph['mz'] = mz            
 
         # For evaluation
         ns, nq, n_way = ph['ns'], ph['nq'], ph['n_way']
-        
-        # Decoder
-        with tf.variable_scope('decoder', reuse=False):
-            if params['network']['use_decoder']:
-                x_rec = dae_decoder_factory(z, ph, params['decoder'])
-                graph['x_rec'] = x_rec
         
         # Embedding
         # Real Samples
@@ -139,12 +150,15 @@ def get_dae_graph(params, ph):
                 graph['mu'] = \
                     tf.get_variable('mu', [nclass, z_dim],
                                     initializer=tf.random_normal_initializer)
-                real_z_mean = tf.gather(graph['mu'], ph['label'], axis=0)
+                real_z_mean = tf.matmul(graph['one_hot_label'], graph['mu'])
                 noise = tf.random_normal([batch_size, z_dim], 0.0, stddev, 
                                          seed=params['train']['seed'])
                 real_z = real_z_mean + noise
                 graph['real_z'] = real_z
                 graph['fake_z'] = z
+
+                if 'mixup' in params['network']:
+                    graph['fake_z'] = tf.concat([z, mz], 0)
             
         graph['embed'] = graph['mu']
         
