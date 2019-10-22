@@ -3,7 +3,7 @@ def generate_params():
     nclass = 64
 
     data = {
-        'rot': False,
+        'rot': True,
         'dataset': 'mini-imagenet',
         'data_dir': '../../data/mini-imagenet/',
         'split_dir': './splits/mini-imagenet',
@@ -20,7 +20,8 @@ def generate_params():
         'batch_size': 64 * 2,
         'num_epoches': 120,
         'iter_per_epoch': 400,
-        'test_iter': 400
+        'test_iter': 400,
+        'ratio': 0.9,
     }
 
 
