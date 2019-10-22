@@ -3,7 +3,7 @@ def generate_params():
     nclass = 64
 
     data = {
-        'rot': True,
+        'rot': False,
         'dataset': 'mini-imagenet',
         'data_dir': '../../data/mini-imagenet/',
         'split_dir': './splits/mini-imagenet',
@@ -63,12 +63,12 @@ def generate_params():
 
     encoder = {
         'type': 'fc',
-        'num_hidden': [h_dim]*1 + [z_dim],
-        'activation': [act]*1 + [None],
-        'init': [init]*2,
-        'regularizer': [None]*2,
-        'reg_scale': [reg_scale]*2,
-        'dropout':[1.0,1.0]
+        'num_hidden': [h_dim]*2 + [z_dim],
+        'activation': [act]*2 + [None],
+        'init': [init]*3,
+        'regularizer': [None]*3,
+        'reg_scale': [reg_scale]*3,
+        'dropout':[1.0]*3
     }
 
     '''decoder = {
@@ -99,7 +99,7 @@ def generate_params():
     }
 
     embed = {
-        'lr': lr,
+        'lr': 1e-2,
         'n_decay': 20,
         'weight_decay': 1.0,
         'type': 'gaussian',
